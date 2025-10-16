@@ -32,7 +32,7 @@ export default function OurPeopleTable() {
     try {
       const res = await getAllPeople({
         page,
-        limit: 10,
+        limit: 20,
         search: debouncedSearch,
       });
 

@@ -184,8 +184,8 @@ const Header: React.FC = () => {
               <Link href="/lesson" className="text-white hover:text-[#168bb9]">
                 Bài học
               </Link>
-              <Link href="/blog" className="text-white hover:text-[#168bb9]">
-                Bài viết
+              <Link href="/people" className="text-white hover:text-[#168bb9]">
+                Nhân sự
               </Link>
 
               {user && !isMobile && (
@@ -331,10 +331,10 @@ const Header: React.FC = () => {
             Bài học
           </button>
           <button
-            onClick={() => handleRouteChange("/blog")}
+            onClick={() => handleRouteChange("/people")}
             className="text-left"
           >
-            Bài viết
+            Nhân sự
           </button>
           <button
             onClick={() => handleRouteChange("/changePassword")}

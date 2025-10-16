@@ -37,12 +37,12 @@ export const getAllPeople = async ({
   page = 1,
   limit = 10,
   search = "",
-  ascending = false, // mặc định mới nhất trước (created_at desc)
+  ascending = false,
 }: {
   page?: number;
   limit?: number;
-  search?: string; // tìm theo name (vi/en) hoặc email
-  ascending?: boolean; // sắp xếp theo created_at
+  search?: string;
+  ascending?: boolean;
 }) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
@@ -53,14 +53,19 @@ export const getAllPeople = async ({
       name, position, area, cv, professional_summary,
       notable_engagements, bar_admissions, education, awards,
       created_at, updated_at
-      `,
+    `,
     { count: "exact" }
   );
 
-  if (search) {
-    const s = search.replaceAll(",", "");
+  const s = (search ?? "").trim();
+  if (s) {
+    const like = `%${s}%`;
     query = query.or(
-      `ilike.name->>vi.%${s}%,ilike.name->>en.%${s}%,ilike.email.%${s}%`
+      [
+        `name->>vi.ilike.${like}`,
+        `name->>en.ilike.${like}`,
+        `email.ilike.${like}`,
+      ].join(",")
     );
   }
 
@@ -70,15 +75,11 @@ export const getAllPeople = async ({
 
   if (error) throw new Error(error.message);
 
-  // nếu muốn mặc định DESC thì đảo ascending ở trên thành !ascending, hoặc giữ tham số:
-  if (!ascending && data)
-    data.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
-
   return {
     data: (data ?? []) as OurPeople[],
     total: count ?? 0,
     page,
-    totalPages: Math.ceil((count ?? 0) / limit),
+    totalPages: Math.max(1, Math.ceil((count ?? 0) / limit)),
   };
 };
 

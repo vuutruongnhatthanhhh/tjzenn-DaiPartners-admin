@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X } from "lucide-react";
+import { useState, useRef, useMemo, useEffect } from "react";
+import { X, FileText, Trash2, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageBox from "@/components/image/ImageBox";
+import CvBox from "@/components/our-people/CvBox"; // <-- dùng lại CvBox
 import { createPerson, OurPeople, I18N } from "@/services/OurPeopleService";
 
 interface AddPeopleModalProps {
@@ -13,6 +14,42 @@ interface AddPeopleModalProps {
 
 const emptyI18N: I18N = { vi: "", en: "" };
 
+const formatBytes = (bytes: number) => {
+  if (!bytes && bytes !== 0) return "";
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    sizes.length - 1
+  );
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+};
+
+const lines = (s: string) =>
+  s
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+const zipI18NArray = (viStr: string, enStr: string) => {
+  const vi = lines(viStr);
+  const en = lines(enStr);
+  const len = Math.max(vi.length, en.length);
+  const out: I18N[] = [];
+  for (let i = 0; i < len; i++) out.push({ vi: vi[i] ?? "", en: en[i] ?? "" });
+  return out;
+};
+
+function getFilenameFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.split("/").pop() || "";
+    return decodeURIComponent(seg || "").split("?")[0];
+  } catch {
+    const seg = url.split("/").pop() || "";
+    return decodeURIComponent(seg || "").split("?")[0];
+  }
+}
+
 export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
   const [form, setForm] = useState<OurPeople>({
     avatar: "",
@@ -20,12 +57,12 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
     name: { ...emptyI18N },
     position: { ...emptyI18N },
     area: { ...emptyI18N },
-    cv: { ...emptyI18N },
+    cv: { ...emptyI18N }, // chọn URL từ storage
     professional_summary: { ...emptyI18N },
     notable_engagements: [],
     bar_admissions: [],
     education: [],
-    awards: [],
+    awards: [], // mảng URL ảnh award
   });
 
   const [showImagePopup, setShowImagePopup] = useState(false);
@@ -37,115 +74,134 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
   const [barEN, setBarEN] = useState("");
   const [eduVI, setEduVI] = useState("");
   const [eduEN, setEduEN] = useState("");
-  const [awardsText, setAwardsText] = useState("");
 
-  // Bật/tắt auto sync EN theo VI (mặc định bật)
-  const [autoSync, setAutoSync] = useState(true);
+  // AWARDS
+  const [awards, setAwards] = useState<string[]>([]);
+  const [showAwardsPicker, setShowAwardsPicker] = useState(false);
+  const addAward = (url: string) => {
+    setAwards((prev) => [...prev, url]);
+    setShowAwardsPicker(false);
+  };
+  const removeAward = (idx: number) => {
+    setAwards((prev) => prev.filter((_, i) => i !== idx));
+  };
 
-  // giữ “bản sao” cuối cùng để nhận biết EN có bị user sửa tay không
+  // ====== MIRROR chỉ cho TEXT (giữ nguyên), KHÔNG áp dụng cho CV ======
+  const [autoSync, setAutoSync] = useState(true); // dùng cho text fields
   const mirrorRef = useRef({
     name: "",
     position: "",
     area: "",
-    cv: "",
     professional_summary: "",
     eng: "",
     bar: "",
     edu: "",
   });
-
-  const lines = (s: string) =>
-    s
-      .split("\n")
-      .map((x) => x.trim())
-      .filter(Boolean);
-
-  const zipI18NArray = (viStr: string, enStr: string) => {
-    const vi = lines(viStr);
-    const en = lines(enStr);
-    const len = Math.max(vi.length, en.length);
-    const out: I18N[] = [];
-    for (let i = 0; i < len; i++)
-      out.push({ vi: vi[i] ?? "", en: en[i] ?? "" });
-    return out;
-  };
-
-  // === Helpers auto-sync field i18n (input) ===
-  const onViChange =
+  const onEnChange =
     (
       key: keyof Pick<
         OurPeople,
-        "name" | "position" | "area" | "cv" | "professional_summary"
+        "name" | "position" | "area" | "professional_summary"
       >
     ) =>
     (v: string) => {
       const prev = form[key] || {};
       const shouldMirror =
-        autoSync &&
-        // EN đang trống hoặc EN đang bằng bản sao trước đó
-        (!prev.en || prev.en === (mirrorRef.current as any)[key]);
-      const next: I18N = {
-        vi: v,
-        en: shouldMirror ? v : prev.en || "",
-      };
-      // cập nhật mirror
+        autoSync && (!prev.vi || prev.vi === (mirrorRef.current as any)[key]);
+      const next: I18N = { en: v, vi: shouldMirror ? v : prev.vi || "" };
       (mirrorRef.current as any)[key] = v;
       setForm({ ...form, [key]: next } as OurPeople);
     };
-
-  const onEnChange =
+  const onViChange =
     (
       key: keyof Pick<
         OurPeople,
-        "name" | "position" | "area" | "cv" | "professional_summary"
+        "name" | "position" | "area" | "professional_summary"
       >
     ) =>
     (v: string) => {
       const prev = form[key] || {};
-      setForm({ ...form, [key]: { ...prev, en: v } } as OurPeople);
+      setForm({ ...form, [key]: { ...prev, vi: v } } as OurPeople);
     };
-
-  // === Helpers auto-sync textarea pairs (mảng) ===
-  const onPairViChange = (pair: "eng" | "bar" | "edu") => (v: string) => {
-    const enVal = { eng: engEN, bar: barEN, edu: eduEN }[pair];
-    const mirrorKey = pair;
-    const shouldMirror =
-      autoSync && (!enVal || enVal === (mirrorRef.current as any)[mirrorKey]);
-    // cập nhật state VI
-    if (pair === "eng") setEngVI(v);
-    if (pair === "bar") setBarVI(v);
-    if (pair === "edu") setEduVI(v);
-    // mirror EN nếu cần
-    if (shouldMirror) {
-      if (pair === "eng") setEngEN(v);
-      if (pair === "bar") setBarEN(v);
-      if (pair === "edu") setEduEN(v);
-    }
-    (mirrorRef.current as any)[mirrorKey] = v;
-  };
-
   const onPairEnChange = (pair: "eng" | "bar" | "edu") => (v: string) => {
+    const viVal = { eng: engVI, bar: barVI, edu: eduVI }[pair];
+    const shouldMirror =
+      autoSync && (!viVal || viVal === (mirrorRef.current as any)[pair]);
     if (pair === "eng") setEngEN(v);
     if (pair === "bar") setBarEN(v);
     if (pair === "edu") setEduEN(v);
+    if (shouldMirror) {
+      if (pair === "eng") setEngVI(v);
+      if (pair === "bar") setBarVI(v);
+      if (pair === "edu") setEduVI(v);
+    }
+    (mirrorRef.current as any)[pair] = v;
   };
+  const onPairViChange = (pair: "eng" | "bar" | "edu") => (v: string) => {
+    if (pair === "eng") setEngVI(v);
+    if (pair === "bar") setBarVI(v);
+    if (pair === "edu") setEduVI(v);
+  };
+
+  // ==== CV: CHỌN TỪ POPUP THƯ MỤC cv/ (KHÔNG mirror EN->VI) ====
+  const [showCvPickerEN, setShowCvPickerEN] = useState(false);
+  const [showCvPickerVI, setShowCvPickerVI] = useState(false);
+
+  const handleDeleteCvEN = () => {
+    setForm((f) => ({ ...f, cv: { ...(f.cv || {}), en: "" } }));
+  };
+  const handleDeleteCvVI = () => {
+    setForm((f) => ({ ...f, cv: { ...(f.cv || {}), vi: "" } }));
+  };
+
+  const pickEN = (url: string) => {
+    setForm((f) => ({ ...f, cv: { ...(f.cv || {}), en: url } }));
+  };
+  const pickVI = (url: string) => {
+    setForm((f) => ({ ...f, cv: { ...(f.cv || {}), vi: url } }));
+  };
+
+  // Preview: hiển thị tên file, click tải về (không có badge “đồng bộ từ EN”)
+  const cvEnPreview = useMemo(
+    () =>
+      form.cv.en
+        ? { name: getFilenameFromUrl(form.cv.en), href: form.cv.en }
+        : null,
+    [form.cv.en]
+  );
+  const cvViPreview = useMemo(
+    () =>
+      form.cv.vi
+        ? { name: getFilenameFromUrl(form.cv.vi), href: form.cv.vi }
+        : null,
+    [form.cv.vi]
+  );
+
+  // ====== Submit ======
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!form.avatar) return toast.warning("Vui lòng chọn ảnh đại diện");
     if (!form.email) return toast.warning("Vui lòng nhập email");
     if (!form.name?.vi && !form.name?.en)
-      return toast.warning("Vui lòng nhập họ tên (vi/en)");
-
-    const payload: OurPeople = {
-      ...form,
-      notable_engagements: zipI18NArray(engVI, engEN),
-      bar_admissions: zipI18NArray(barVI, barEN),
-      education: zipI18NArray(eduVI, eduEN),
-      awards: lines(awardsText),
-    };
+      return toast.warning("Vui lòng nhập tên (VI/EN)");
+    if (!form.cv?.vi || !form.cv?.en) return toast.warning("Vui lòng chọn CV");
 
     try {
+      setIsSubmitting(true);
+
+      // KHÔNG mirror CV
+      const payload: OurPeople = {
+        ...form,
+        cv: { en: form.cv.en || "", vi: form.cv.vi || "" },
+        notable_engagements: zipI18NArray(engVI, engEN),
+        bar_admissions: zipI18NArray(barVI, barEN),
+        education: zipI18NArray(eduVI, eduEN),
+        awards,
+      };
+
       const created = await createPerson(payload);
       toast.success("Đã thêm nhân sự thành công");
       onAdd(created);
@@ -153,14 +209,25 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
     } catch (err: any) {
       const message =
         err?.message || err?.error?.message || JSON.stringify(err);
-      toast.error("Thêm nhân sự thất bại");
+      toast.error("Thêm nhân sự thất bại", { description: message });
       console.error("Create person error:", message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Khóa scroll nền khi mở modal
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-2xl h-[90vh] relative flex flex-col">
+      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-7xl h-[90vh] relative flex flex-col">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#1c1c1e] p-6 border-b border-white/10">
           <h2 className="text-2xl font-bold text-white">
@@ -169,19 +236,10 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
           <button
             className="absolute top-6 right-6 text-white"
             onClick={onClose}
+            disabled={isSubmitting}
           >
             <X className="w-5 h-5" />
           </button>
-
-          {/* Toggle autosync */}
-          <label className="mt-3 flex items-center gap-2 text-sm text-gray-300">
-            <input
-              type="checkbox"
-              checked={autoSync}
-              onChange={(e) => setAutoSync(e.target.checked)}
-            />
-            Tự đồng bộ EN theo VI
-          </label>
         </div>
 
         {/* Form */}
@@ -192,9 +250,10 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
         >
           {/* Avatar */}
           <div>
-            <label className="block mb-1 text-white">Ảnh đại diện (WebP)</label>
+            <label className="block mb-1 text-white">Ảnh đại diện</label>
             {form.avatar ? (
               <div className="relative w-32 h-32 mb-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={form.avatar}
                   alt="avatar"
@@ -204,6 +263,7 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
                   type="button"
                   className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 text-xs"
                   onClick={() => setForm({ ...form, avatar: "" })}
+                  disabled={isSubmitting}
                 >
                   ✕
                 </button>
@@ -211,8 +271,9 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             ) : null}
             <button
               type="button"
-              className="text-sm text-blue-400"
+              className="text-sm text-blue-400 disabled:opacity-50"
               onClick={() => setShowImagePopup(true)}
+              disabled={isSubmitting}
             >
               + Chọn ảnh từ thư viện
             </button>
@@ -228,128 +289,233 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
           {/* Name i18n */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Tên (VI)"
-              value={form.name.vi || ""}
-              onChange={onViChange("name")}
-            />
-            <Input
               label="Name (EN)"
               value={form.name.en || ""}
               onChange={onEnChange("name")}
+            />
+            <Input
+              label="Tên (VI)"
+              value={form.name.vi || ""}
+              onChange={onViChange("name")}
             />
           </div>
 
           {/* Position i18n */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Chức danh (VI)"
-              value={form.position.vi || ""}
-              onChange={onViChange("position")}
-            />
-            <Input
               label="Position (EN)"
               value={form.position.en || ""}
               onChange={onEnChange("position")}
+            />
+            <Input
+              label="Chức danh (VI)"
+              value={form.position.vi || ""}
+              onChange={onViChange("position")}
             />
           </div>
 
           {/* Area i18n */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Khu vực (VI)"
-              value={form.area.vi || ""}
-              onChange={onViChange("area")}
-            />
-            <Input
               label="Area (EN)"
               value={form.area.en || ""}
               onChange={onEnChange("area")}
             />
+            <Input
+              label="Khu vực (VI)"
+              value={form.area.vi || ""}
+              onChange={onViChange("area")}
+            />
           </div>
 
-          {/* CV links i18n */}
+          {/* CV: chọn từ popup thư mục cv/ */}
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="CV (VI)"
-              value={form.cv.vi || ""}
-              onChange={onViChange("cv")}
-            />
-            <Input
-              label="CV (EN)"
-              value={form.cv.en || ""}
-              onChange={onEnChange("cv")}
-            />
+            {/* EN */}
+            <div>
+              <label className="block mb-1 text-white">CV (EN)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-xs px-3 py-2 rounded bg-blue-600 disabled:opacity-50"
+                  onClick={() => setShowCvPickerEN(true)}
+                  disabled={isSubmitting}
+                >
+                  <Upload className="w-4 h-4" /> Chọn CV
+                </button>
+                {form.cv.en && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs px-2 py-2 rounded bg-red-600 disabled:opacity-50"
+                    onClick={handleDeleteCvEN}
+                    disabled={isSubmitting}
+                  >
+                    <Trash2 className="w-4 h-4" /> Xóa
+                  </button>
+                )}
+              </div>
+              {cvEnPreview && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-300">
+                  <FileText className="w-4 h-4" />
+                  <a
+                    href={cvEnPreview.href}
+                    download={cvEnPreview.name}
+                    className="truncate underline hover:opacity-80"
+                    title={cvEnPreview.name}
+                  >
+                    {cvEnPreview.name}
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* VI */}
+            <div>
+              <label className="block mb-1 text-white">CV (VI)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-xs px-3 py-2 rounded bg-blue-600 disabled:opacity-50"
+                  onClick={() => setShowCvPickerVI(true)}
+                  disabled={isSubmitting}
+                >
+                  <Upload className="w-4 h-4" /> Chọn CV
+                </button>
+
+                {form.cv.vi && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs px-2 py-2 rounded bg-red-600 disabled:opacity-50"
+                    onClick={handleDeleteCvVI}
+                    disabled={isSubmitting}
+                  >
+                    <Trash2 className="w-4 h-4" /> Xóa
+                  </button>
+                )}
+              </div>
+
+              {cvViPreview && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-300">
+                  <FileText className="w-4 h-4" />
+                  <a
+                    href={cvViPreview.href}
+                    download={cvViPreview.name}
+                    className="truncate underline hover:opacity-80"
+                    title={cvViPreview.name}
+                  >
+                    {cvViPreview.name}
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Professional Summary i18n */}
           <div className="grid grid-cols-2 gap-4">
             <Textarea
-              label="Tóm tắt nghề nghiệp (VI)"
-              value={form.professional_summary.vi || ""}
-              onChange={onViChange("professional_summary")}
-            />
-            <Textarea
               label="Professional summary (EN)"
               value={form.professional_summary.en || ""}
               onChange={onEnChange("professional_summary")}
+            />
+            <Textarea
+              label="Tóm tắt nghề nghiệp (VI)"
+              value={form.professional_summary.vi || ""}
+              onChange={onViChange("professional_summary")}
             />
           </div>
 
           {/* Notable engagements */}
           <div className="grid grid-cols-2 gap-4">
             <Textarea
-              label="Notable engagements (VI) – mỗi dòng 1 ý"
-              value={engVI}
-              onChange={onPairViChange("eng")}
-              placeholder="- Đại diện bị đơn vụ 200 tỷ\n- Tư vấn chiến lược…"
-            />
-            <Textarea
-              label="Notable engagements (EN) – one item per line"
+              label="Notable engagements (EN)"
               value={engEN}
               onChange={onPairEnChange("eng")}
-              placeholder="- Represented respondent…\n- Advised on…"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+            />
+            <Textarea
+              label="Thương vụ tiêu biểu (VI)"
+              value={engVI}
+              onChange={onPairViChange("eng")}
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
           </div>
 
           {/* Bar admissions */}
           <div className="grid grid-cols-2 gap-4">
             <Textarea
-              label="Bar admissions (VI) – mỗi dòng 1 mục"
-              value={barVI}
-              onChange={onPairViChange("bar")}
-              placeholder="New York (2019)\nCalifornia (2021)"
-            />
-            <Textarea
-              label="Bar admissions (EN) – one per line"
+              label="Bar admissions (EN)"
               value={barEN}
               onChange={onPairEnChange("bar")}
-              placeholder="New York (2019)\nCalifornia (2021)"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+            />
+            <Textarea
+              label="Quốc gia hành nghề (VI)"
+              value={barVI}
+              onChange={onPairViChange("bar")}
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
           </div>
 
           {/* Education */}
           <div className="grid grid-cols-2 gap-4">
             <Textarea
-              label="Education (VI) – mỗi dòng 1 mục"
-              value={eduVI}
-              onChange={onPairViChange("edu")}
-              placeholder="ĐH Luật TP.HCM — Cử nhân Luật (2013)"
-            />
-            <Textarea
-              label="Education (EN) – one per line"
+              label="Education (EN)"
               value={eduEN}
               onChange={onPairEnChange("edu")}
-              placeholder="HCMC University of Law — LL.B. (2013)"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+            />
+            <Textarea
+              label="Học vấn (VI)"
+              value={eduVI}
+              onChange={onPairViChange("edu")}
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
           </div>
 
-          {/* Awards (dùng chung) */}
-          <Textarea
-            label="Awards (dùng chung) – mỗi dòng 1 giải"
-            value={awardsText}
-            onChange={setAwardsText}
-            placeholder="Lawyer of the Year 2022\nTop 40 Under 40"
-          />
+          {/* Awards */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-white">Awards (ảnh vuông)</label>
+              <button
+                type="button"
+                className="text-xs px-3 py-2 rounded bg-blue-600 disabled:opacity-50"
+                onClick={() => setShowAwardsPicker(true)}
+                disabled={isSubmitting}
+              >
+                + Chọn ảnh award
+              </button>
+            </div>
+
+            {awards.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                Chưa có ảnh award. Nhấn “+ Chọn ảnh award” để thêm.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {awards.map((url, idx) => (
+                  <div
+                    key={url + idx}
+                    className="relative group rounded-lg overflow-hidden border border-white/10 aspect-square"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`award-${idx}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white rounded p-1"
+                      onClick={() => removeAward(idx)}
+                      title="Xóa ảnh này"
+                      disabled={isSubmitting}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </form>
 
         {/* Footer */}
@@ -357,14 +523,23 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
           <button
             type="submit"
             form="add-people-form"
-            className="w-full py-2 rounded-lg bg-buttonRoot text-white font-semibold"
+            className="w-full py-2 rounded-lg bg-buttonRoot text-white font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
           >
-            Thêm nhân sự
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang lưu…
+              </>
+            ) : (
+              "Thêm nhân sự"
+            )}
           </button>
         </div>
       </div>
 
-      {/* Image picker */}
+      {/* Image picker cho Avatar */}
       {showImagePopup && (
         <ImageBox
           open={showImagePopup}
@@ -374,6 +549,32 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             setForm({ ...form, avatar: url });
             setShowImagePopup(false);
           }}
+        />
+      )}
+
+      {/* CV pickers */}
+      {showCvPickerEN && (
+        <CvBox
+          open={showCvPickerEN}
+          onClose={() => setShowCvPickerEN(false)}
+          onSelect={(url) => pickEN(url)}
+        />
+      )}
+      {showCvPickerVI && (
+        <CvBox
+          open={showCvPickerVI}
+          onClose={() => setShowCvPickerVI(false)}
+          onSelect={(url) => pickVI(url)}
+        />
+      )}
+
+      {/* Image picker cho Awards */}
+      {showAwardsPicker && (
+        <ImageBox
+          open={showAwardsPicker}
+          onClose={() => setShowAwardsPicker(false)}
+          folder="people"
+          handleImageSelect={(url) => addAward(url)}
         />
       )}
     </div>
