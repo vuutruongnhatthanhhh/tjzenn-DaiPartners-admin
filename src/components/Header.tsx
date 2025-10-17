@@ -185,7 +185,7 @@ const Header: React.FC = () => {
                 Bài học
               </Link>
               <Link href="/people" className="text-white hover:text-[#168bb9]">
-                Nhân sự
+                Đội ngũ
               </Link>
 
               {user && !isMobile && (
