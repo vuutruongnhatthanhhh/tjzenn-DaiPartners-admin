@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, Plus, Youtube } from "lucide-react";
-import LessonAdd from "@/components/lesson/LessonAdd";
+import CareerAdd from "@/components/career/CareerAdd";
 import LessonUpdate from "@/components/lesson/LessonUpdate";
 import { getAllLessons, deleteLesson } from "@/services/LessonService";
 import { supabase } from "@/lib/supabaseClient";
@@ -205,7 +205,7 @@ export default function LessonTable() {
           </tbody>
         </table>
         {showAddModal && (
-          <LessonAdd
+          <CareerAdd
             onClose={() => setShowAddModal(false)}
             onAdd={fetchLessons}
           />

@@ -1,9 +1,9 @@
-import LessonTable from "@/components/lesson/LessonTable";
+import CareerTable from "@/components/career/CareerTable";
 
 export default async function LessonPage() {
   return (
     <div>
-      <LessonTable />
+      <CareerTable />
     </div>
   );
 }
