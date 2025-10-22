@@ -1,9 +1,9 @@
-import UserTable from "@/components/user/UserTable";
+import BlogTable from "@/components/blog/BlogTable";
 
 export default async function UserPage() {
   return (
     <div>
-      <UserTable />
+      <BlogTable />
     </div>
   );
 }

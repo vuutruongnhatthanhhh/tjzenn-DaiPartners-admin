@@ -1,56 +1,45 @@
-// services/BlogService.ts
+// services/CategoryService.ts
 import { supabase } from "@/lib/supabaseClient";
 
 export type I18N = { vi?: string; en?: string };
 
-export interface Blog {
+export interface Category {
   id?: number; // int8
-  name: I18N; // jsonb
-  slug: I18N; // jsonb
-  content: I18N; // jsonb (HTML/markdown tuỳ anh)
-  category?: number | null; // int8 (FK -> categories.id)
+  name: I18N; // jsonb { vi, en }
   created_at?: string; // timestamp
 }
 
 /** Create */
-export async function createBlog(payload: Blog) {
+export async function createCategory(payload: Category) {
   const { data, error } = await supabase
-    .from("blogs")
+    .from("categories")
     .insert([{ ...payload }])
     .select()
     .single();
 
   if (error) throw error;
-  return data as Blog;
+  return data as Category;
 }
 
-/** List + paginate + search + filter category
- *  - search: chỉ theo name (vi/en)
- *  - categoryId: nếu truyền vào (number), sẽ .eq("category", categoryId)
- */
-export async function getAllBlogs({
+/** List + paginate + search (chỉ theo name vi/en) */
+export async function getAllCategories({
   page = 1,
   limit = 10,
   search = "",
-  categoryId,
   ascending = false, // sort theo created_at
 }: {
   page?: number;
   limit?: number;
   search?: string;
-  categoryId?: number | null;
   ascending?: boolean;
 }) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from("blogs").select(
+  let query = supabase.from("categories").select(
     `
       id,
       name,
-      slug,
-      content,
-      category,
       created_at
     `,
     { count: "exact" }
@@ -59,14 +48,9 @@ export async function getAllBlogs({
   const s = (search ?? "").trim();
   if (s) {
     const like = `%${s}%`;
-    // ✅ search theo name (vi/en)
     query = query.or(
       [`name->>vi.ilike.${like}`, `name->>en.ilike.${like}`].join(",")
     );
-  }
-
-  if (typeof categoryId === "number") {
-    query = query.eq("category", categoryId);
   }
 
   const { data, error, count } = await query
@@ -76,7 +60,7 @@ export async function getAllBlogs({
   if (error) throw new Error(error.message);
 
   return {
-    data: (data ?? []) as Blog[],
+    data: (data ?? []) as Category[],
     total: count ?? 0,
     page,
     totalPages: Math.max(1, Math.ceil((count ?? 0) / limit)),
@@ -84,32 +68,32 @@ export async function getAllBlogs({
 }
 
 /** Detail */
-export async function getBlogById(id: number) {
+export async function getCategoryById(id: number) {
   const { data, error } = await supabase
-    .from("blogs")
+    .from("categories")
     .select("*")
     .eq("id", id)
     .single();
 
   if (error) throw error;
-  return data as Blog;
+  return data as Category;
 }
 
 /** Update (partial) */
-export async function updateBlog(id: number, payload: Partial<Blog>) {
+export async function updateCategory(id: number, payload: Partial<Category>) {
   const { data, error } = await supabase
-    .from("blogs")
+    .from("categories")
     .update({ ...payload })
     .eq("id", id)
     .select()
     .single();
 
   if (error) throw error;
-  return data as Blog;
+  return data as Category;
 }
 
 /** Delete */
-export async function deleteBlog(id: number) {
-  const { error } = await supabase.from("blogs").delete().eq("id", id);
+export async function deleteCategory(id: number) {
+  const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw error;
 }

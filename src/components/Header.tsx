@@ -178,11 +178,14 @@ const Header: React.FC = () => {
                 Người dùng
               </Link>
 
-              <Link href="/course" className="text-white hover:text-[#168bb9]">
-                Khóa học
+              <Link
+                href="/category"
+                className="text-white hover:text-[#168bb9]"
+              >
+                Danh mục
               </Link>
-              <Link href="/lesson" className="text-white hover:text-[#168bb9]">
-                Bài học
+              <Link href="/career" className="text-white hover:text-[#168bb9]">
+                Tuyển dụng
               </Link>
               <Link href="/people" className="text-white hover:text-[#168bb9]">
                 Đội ngũ
@@ -319,22 +322,22 @@ const Header: React.FC = () => {
           </button>
 
           <button
-            onClick={() => handleRouteChange("/course")}
+            onClick={() => handleRouteChange("/category")}
             className="text-left"
           >
-            Khóa học
+            Danh mục
           </button>
           <button
-            onClick={() => handleRouteChange("/lesson")}
+            onClick={() => handleRouteChange("/career")}
             className="text-left"
           >
-            Bài học
+            Tuyển dụng
           </button>
           <button
             onClick={() => handleRouteChange("/people")}
             className="text-left"
           >
-            Nhân sự
+            Đội ngũ
           </button>
           <button
             onClick={() => handleRouteChange("/changePassword")}

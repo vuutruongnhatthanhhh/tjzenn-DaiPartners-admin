@@ -175,14 +175,14 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
               Thêm tin tuyển dụng (Career)
             </h2>
             <div className="flex items-center gap-4">
-              <label className="text-sm text-gray-300 flex items-center gap-2">
+              {/* <label className="text-sm text-gray-300 flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={autoSync}
                   onChange={(e) => setAutoSync(e.target.checked)}
                 />
                 Tự đồng bộ EN → VI
-              </label>
+              </label> */}
               <button
                 className="text-white"
                 onClick={onClose}
@@ -203,7 +203,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           {/* Name */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Position / Title (EN)"
+              label="Position (EN)"
               value={form.name.en || ""}
               onChange={onEnChange("name")}
             />
@@ -306,19 +306,19 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
               label="Job requirements (EN)"
               value={reqEN}
               onChange={onReqEnChange}
-              placeholder="Mỗi dòng là một yêu cầu (EN)\nVí dụ:\n- 2+ years React\n- Good English"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
             <Textarea
               label="Yêu cầu công việc (VI)"
               value={reqVI}
               onChange={onReqViChange}
-              placeholder="Mỗi dòng là một yêu cầu (VI)\nVí dụ:\n- 2+ năm React\n- Tiếng Anh khá"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
           </div>
 
           {/* Email */}
           <Input
-            label="Email liên hệ (optional)"
+            label="Email liên hệ"
             value={form.email || ""}
             onChange={(v) => setForm({ ...form, email: v })}
           />

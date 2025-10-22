@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
-import CourseAdd from "@/components/course/CourseAdd";
+import CategoryAdd from "@/components/category/CategoryAdd";
 import CourseUpdate from "@/components/course/CourseUpdate";
 import { getAllCourses, deleteCourse } from "@/services/CourseService";
 import { toast } from "sonner";
@@ -221,7 +221,7 @@ export default function CourseTable() {
           </tbody>
         </table>
         {showAddModal && (
-          <CourseAdd
+          <CategoryAdd
             onClose={() => setShowAddModal(false)}
             onAdded={fetchCourses}
           />

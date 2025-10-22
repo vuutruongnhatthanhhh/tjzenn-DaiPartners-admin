@@ -173,14 +173,14 @@ export default function CareerUpdate({
               Cập nhật tin tuyển dụng
             </h2>
             <div className="flex items-center gap-4">
-              <label className="text-sm text-gray-300 flex items-center gap-2">
+              {/* <label className="text-sm text-gray-300 flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={autoSync}
                   onChange={(e) => setAutoSync(e.target.checked)}
                 />
                 Tự đồng bộ EN → VI
-              </label>
+              </label> */}
               <button
                 className="text-white"
                 onClick={onClose}
@@ -304,13 +304,13 @@ export default function CareerUpdate({
               label="Job requirements (EN)"
               value={reqEN}
               onChange={onReqEnChange}
-              placeholder="Mỗi dòng là một yêu cầu (EN)"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
             <Textarea
               label="Yêu cầu công việc (VI)"
               value={reqVI}
               onChange={onReqViChange}
-              placeholder="Mỗi dòng là một yêu cầu (VI)"
+              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
             />
           </div>
 

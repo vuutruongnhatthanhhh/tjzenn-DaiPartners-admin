@@ -1,84 +1,117 @@
+// components/blog/BlogAdd.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabaseClient";
+import { createBlog, type Blog, type I18N } from "@/services/BlogService";
+import { getAllCategories, type Category } from "@/services/CategoryService";
 import Editor from "@/components/editor/Editor";
-import { createBlog } from "@/services/BlogService";
-import ImageBox from "@/components/image/ImageBox";
-import CategoryBlogSelect from "@/components/blog/CategoryBlogSelect";
 import { slugify } from "@/utils/slugify";
 
 interface AddBlogModalProps {
   onClose: () => void;
-  onAdd: (blog: any) => void;
+  onAdd: (blog: Blog) => void;
 }
 
+const emptyI18N: I18N = { vi: "", en: "" };
+const t = (i18n?: I18N, locale: "vi" | "en" = "vi") =>
+  (i18n?.[locale] ?? i18n?.en ?? i18n?.vi ?? "").trim();
+
 export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
-  const [form, setForm] = useState({
-    title: "",
-    url: "",
-    image: "",
-    shortDescription: "",
-    content: "",
-    author: "",
-    category: "",
-    isHide: false,
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [authors, setAuthors] = useState<{ id: number; name: string }[]>([]);
-  const [showImagePopup, setShowImagePopup] = useState(false);
+  const [name, setName] = useState<I18N>({ ...emptyI18N });
+  const [slug, setSlug] = useState<I18N>({ ...emptyI18N });
+  const [content, setContent] = useState<I18N>({ ...emptyI18N });
+  const [category, setCategory] = useState<number | "">("");
 
+  const [catOptions, setCatOptions] = useState<Category[]>([]);
+  const [isLoadingCats, setIsLoadingCats] = useState(false);
+
+  // Load categories từ CategoryService
   useEffect(() => {
-    const fetchAuthors = async () => {
-      const { data, error } = await supabase.from("users").select("id, name");
-      if (error) {
-        toast.error("Không thể tải danh sách tác giả");
-      } else {
-        setAuthors(data);
+    let mounted = true;
+    (async () => {
+      try {
+        setIsLoadingCats(true);
+        const res = await getAllCategories({ page: 1, limit: 100, search: "" });
+        if (mounted) setCatOptions(res.data);
+      } catch (e) {
+        toast.error("Không tải được danh mục");
+      } finally {
+        setIsLoadingCats(false);
       }
+    })();
+    return () => {
+      mounted = false;
     };
-    fetchAuthors();
   }, []);
+
+  // Auto-generate slug khi đổi name
+  useEffect(() => {
+    setSlug({
+      en: slugify(name.en || ""),
+      vi: slugify(name.vi || ""),
+    });
+  }, [name.en, name.vi]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.image) {
-      toast.warning("Vui lòng chọn ảnh cho bài viết");
+    if (isSubmitting) return;
+
+    if (!(name.vi || name.en)) {
+      toast.warning("Vui lòng nhập tiêu đề (VI hoặc EN)");
       return;
     }
+    if (category === "") {
+      toast.warning("Vui lòng chọn danh mục");
+      return;
+    }
+
     try {
-      const newBlog = await createBlog({
-        ...form,
-        author: Number(form.author),
+      setIsSubmitting(true);
+
+      const payload: Blog = {
+        name: { en: name.en || "", vi: name.vi || "" },
+        slug: { en: slug.en || "", vi: slug.vi || "" },
+        content: { en: content.en || "", vi: content.vi || "" },
+        category: Number(category),
+      };
+
+      const created = await createBlog(payload);
+      toast.success("ĐÃ TẠO BÀI VIẾT THÀNH CÔNG", {
+        description: <strong>{name.vi || name.en}</strong>,
       });
-      toast.success("ĐÃ TẠO BLOG THÀNH CÔNG", {
-        description: <strong>{form.title}</strong>,
-      });
-      onAdd(newBlog);
+      onAdd(created);
       onClose();
     } catch (err: any) {
       const message =
         err?.message || err?.error?.message || JSON.stringify(err);
-
-      if (
-        message.includes("duplicate key value") &&
-        message.includes("blogs_url_key")
-      ) {
-        toast.error("URL bài viết đã tồn tại. Vui lòng chọn URL khác.");
-      } else {
-        toast.error("Thêm bài viết thất bại");
-        console.error("Lỗi tạo blog:", err);
-      }
+      toast.error("Thêm bài viết thất bại", { description: message });
+      console.error("Create blog error:", message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // khoá scroll khi mở modal
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-md h-[90vh] relative flex flex-col">
+      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-3xl h-[90vh] relative flex flex-col">
+        {/* Header */}
         <div className="sticky top-0 z-10 bg-[#1c1c1e] p-6 border-b border-white/10">
-          <h2 className="text-2xl font-bold text-white">Thêm bài viết</h2>
+          <h2 className="text-2xl font-bold text-white">
+            Thêm bài viết (Blog)
+          </h2>
           <button
             className="absolute top-6 right-6 text-white"
             onClick={onClose}
@@ -87,136 +120,106 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           </button>
         </div>
 
+        {/* Form */}
         <form
           id="add-blog-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-auto px-6 py-4 space-y-4"
+          className="flex-1 overflow-auto px-6 py-4 space-y-6"
         >
-          <Input
-            label="Tiêu đề"
-            value={form.title}
-            onChange={(v) =>
-              setForm({
-                ...form,
-                title: v,
-                url: slugify(v),
-              })
-            }
-          />
-          <Input
-            label="URL"
-            value={form.url}
-            onChange={(v) => setForm({ ...form, url: v })}
-          />
-          <div>
-            <label className="block mb-1 text-white">
-              Ảnh bài viết <span className="text-red-500">(1536 x 1024)</span>
-            </label>
-            {form.image ? (
-              <div className="relative w-32 h-32 mb-2">
-                <img
-                  src={form.image}
-                  alt={form.title}
-                  className="w-full h-full object-cover rounded border border-gray-700"
-                />
-                <button
-                  className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 text-xs"
-                  onClick={() => setForm({ ...form, image: "" })}
-                >
-                  ✕
-                </button>
-              </div>
-            ) : null}
-
-            <button
-              type="button"
-              className="text-sm text-blue-400"
-              onClick={() => setShowImagePopup(true)}
-            >
-              + Chọn ảnh từ thư viện
-            </button>
+          {/* Title */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Tiêu đề (EN)"
+              value={name.en || ""}
+              onChange={(v) => setName((p) => ({ ...p, en: v }))}
+            />
+            <Input
+              label="Tiêu đề (VI)"
+              value={name.vi || ""}
+              onChange={(v) => setName((p) => ({ ...p, vi: v }))}
+            />
           </div>
-          <Input
-            label="Mô tả ngắn"
-            value={form.shortDescription}
-            onChange={(v) => setForm({ ...form, shortDescription: v })}
-          />
-          <CategoryBlogSelect
-            value={form.category}
-            onChange={(val) => setForm({ ...form, category: val })}
-          />
 
+          {/* Slug (auto) */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Slug (EN)"
+              value={slug.en || ""}
+              onChange={(v) => setSlug((p) => ({ ...p, en: slugify(v) }))}
+            />
+            <Input
+              label="Slug (VI)"
+              value={slug.vi || ""}
+              onChange={(v) => setSlug((p) => ({ ...p, vi: slugify(v) }))}
+            />
+          </div>
+
+          {/* Category (from CategoryService) */}
           <div>
-            <label className="block mb-1 text-white">Tác giả</label>
+            <label className="block mb-1 text-white">Danh mục</label>
             <select
-              className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600"
-              value={form.author}
-              onChange={(e) => setForm({ ...form, author: e.target.value })}
-              required
+              className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600 disabled:opacity-60"
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value ? Number(e.target.value) : "")
+              }
+              disabled={isLoadingCats}
             >
-              <option value="" disabled>
-                -- Chọn tác giả --
-              </option>
-              {authors.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
+              <option value="">-- Chọn danh mục --</option>
+              {catOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {t(c.name)}
                 </option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="block mb-1 text-white">Trạng thái</label>
-            <select
-              className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600"
-              value={form.isHide ? "true" : "false"}
-              onChange={(e) =>
-                setForm({ ...form, isHide: e.target.value === "true" })
-              }
-            >
-              <option value="false">Hiển thị</option>
-              <option value="true">Ẩn</option>
-            </select>
-          </div>
 
-          <div>
-            <label className="block mb-1 text-white">
-              Nội dung <span className="text-red-500">(Ảnh 1536 x 1024)</span>
-            </label>
-            <Editor
-              initialContent={form.content}
-              onContentChange={(content) =>
-                setForm((prev) => ({ ...prev, content }))
-              }
-              folder="blog"
-            />
+          {/* Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 text-white">Nội dung (EN)</label>
+              <Editor
+                initialContent={content.en || ""}
+                onContentChange={(v) => setContent((p) => ({ ...p, en: v }))}
+                folder="blog"
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-white">Nội dung (VI)</label>
+              <Editor
+                initialContent={content.vi || ""}
+                onContentChange={(v) => setContent((p) => ({ ...p, vi: v }))}
+                folder="blog"
+              />
+            </div>
           </div>
         </form>
 
-        <div className="sticky bottom-0 z-10 bg-[#1c1c1e] px-6 py-4 border-t border-white/10">
+        {/* Footer */}
+        <div className="sticky bottom-0 z-10 bg-[#1c1c11] px-6 py-4 border-t border-white/10">
           <button
             type="submit"
             form="add-blog-form"
-            className="w-full py-2 rounded-lg bg-buttonRoot text-white font-semibold"
+            className="w-full py-2 rounded-lg bg-buttonRoot text-white font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
           >
-            Thêm bài viết
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang lưu…
+              </>
+            ) : (
+              "Thêm bài viết"
+            )}
           </button>
         </div>
       </div>
-      {showImagePopup && (
-        <ImageBox
-          open={showImagePopup}
-          onClose={() => setShowImagePopup(false)}
-          folder="blog"
-          handleImageSelect={(url) => {
-            setForm({ ...form, image: url });
-            setShowImagePopup(false);
-          }}
-        />
-      )}
     </div>
   );
 }
 
+/* ------------ Small UI helpers ------------ */
 function Input({
   label,
   value,
@@ -233,7 +236,6 @@ function Input({
         className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
       />
     </div>
   );
