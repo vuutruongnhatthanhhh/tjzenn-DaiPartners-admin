@@ -108,7 +108,7 @@ const Editor = ({
       Color,
       Heading.configure({
         levels: [1, 2, 3],
-        HTMLAttributes: { class: "font-bold my-4 text-2xl" },
+        HTMLAttributes: { class: "font-semibold my-4 text-2xl" },
       }),
       BulletList.configure({ HTMLAttributes: { class: "list-disc ml-6" } }),
       OrderedList.configure({ HTMLAttributes: { class: "list-decimal ml-6" } }),

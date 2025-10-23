@@ -7,6 +7,7 @@ export interface Blog {
   id?: number; // int8
   name: I18N; // jsonb
   slug: I18N; // jsonb
+  short_des?: I18N; // jsonb  <-- NEW
   content: I18N; // jsonb (HTML/markdown tuỳ anh)
   category?: number | null; // int8 (FK -> categories.id)
   created_at?: string; // timestamp
@@ -25,7 +26,7 @@ export async function createBlog(payload: Blog) {
 }
 
 /** List + paginate + search + filter category
- *  - search: chỉ theo name (vi/en)
+ *  - search: CHỈ theo name (vi/en)
  *  - categoryId: nếu truyền vào (number), sẽ .eq("category", categoryId)
  */
 export async function getAllBlogs({
@@ -49,6 +50,7 @@ export async function getAllBlogs({
       id,
       name,
       slug,
+      short_des,
       content,
       category,
       created_at
@@ -59,7 +61,7 @@ export async function getAllBlogs({
   const s = (search ?? "").trim();
   if (s) {
     const like = `%${s}%`;
-    // ✅ search theo name (vi/en)
+    // ✅ chỉ search theo name (vi/en)
     query = query.or(
       [`name->>vi.ilike.${like}`, `name->>en.ilike.${like}`].join(",")
     );

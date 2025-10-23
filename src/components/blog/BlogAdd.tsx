@@ -15,46 +15,68 @@ interface AddBlogModalProps {
 }
 
 const emptyI18N: I18N = { vi: "", en: "" };
-const t = (i18n?: I18N, locale: "vi" | "en" = "vi") =>
-  (i18n?.[locale] ?? i18n?.en ?? i18n?.vi ?? "").trim();
 
 export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [name, setName] = useState<I18N>({ ...emptyI18N });
   const [slug, setSlug] = useState<I18N>({ ...emptyI18N });
+  const [shortDes, setShortDes] = useState<I18N>({ ...emptyI18N });
   const [content, setContent] = useState<I18N>({ ...emptyI18N });
-  const [category, setCategory] = useState<number | "">("");
 
+  const [category, setCategory] = useState<number | "">("");
   const [catOptions, setCatOptions] = useState<Category[]>([]);
   const [isLoadingCats, setIsLoadingCats] = useState(false);
 
-  // Load categories từ CategoryService
+  // chỉ cần remount VI editor khi EN thay đổi
+  const [viKey, setViKey] = useState(0);
+
+  // Load categories
   useEffect(() => {
-    let mounted = true;
     (async () => {
       try {
         setIsLoadingCats(true);
         const res = await getAllCategories({ page: 1, limit: 100, search: "" });
-        if (mounted) setCatOptions(res.data);
-      } catch (e) {
+        setCatOptions(res.data);
+      } catch {
         toast.error("Không tải được danh mục");
       } finally {
         setIsLoadingCats(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
   }, []);
 
-  // Auto-generate slug khi đổi name
+  // Slug EN theo title EN
   useEffect(() => {
-    setSlug({
-      en: slugify(name.en || ""),
-      vi: slugify(name.vi || ""),
-    });
-  }, [name.en, name.vi]);
+    setSlug((prev) => ({ ...prev, en: slugify(name.en || "") }));
+  }, [name.en]);
+
+  // Slug VI theo tiêu đề VI
+  useEffect(() => {
+    setSlug((prev) => ({ ...prev, vi: slugify(name.vi || "") }));
+  }, [name.vi]);
+
+  // EN -> VI (Title)
+  const handleNameChange = (lang: "en" | "vi", value: string) => {
+    if (lang === "en") {
+      setName({ en: value, vi: value });
+    } else {
+      // VI chỉ cập nhật VI, không ảnh hưởng EN
+      setName((p) => ({ ...p, vi: value }));
+    }
+  };
+
+  // EN -> VI (Content)
+  const handleContentChange = (lang: "en" | "vi", value: string) => {
+    if (lang === "en") {
+      setContent({ en: value, vi: value });
+      // remount VI editor để phản ánh nội dung mới từ EN
+      setViKey((k) => k + 1);
+    } else {
+      // VI chỉ cập nhật VI, không ảnh hưởng EN
+      setContent((p) => ({ ...p, vi: value }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,14 +93,13 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
 
     try {
       setIsSubmitting(true);
-
       const payload: Blog = {
-        name: { en: name.en || "", vi: name.vi || "" },
-        slug: { en: slug.en || "", vi: slug.vi || "" },
-        content: { en: content.en || "", vi: content.vi || "" },
+        name,
+        slug,
+        short_des: { en: shortDes.en || "", vi: shortDes.vi || "" },
+        content,
         category: Number(category),
       };
-
       const created = await createBlog(payload);
       toast.success("ĐÃ TẠO BÀI VIẾT THÀNH CÔNG", {
         description: <strong>{name.vi || name.en}</strong>,
@@ -89,13 +110,12 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
       const message =
         err?.message || err?.error?.message || JSON.stringify(err);
       toast.error("Thêm bài viết thất bại", { description: message });
-      console.error("Create blog error:", message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // khoá scroll khi mở modal
+  // lock body scroll khi mở modal
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -106,11 +126,11 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-3xl h-[90vh] relative flex flex-col">
+      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-7xl h-[90vh] relative flex flex-col">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#1c1c1e] p-6 border-b border-white/10">
           <h2 className="text-2xl font-bold text-white">
-            Thêm bài viết (Blog)
+            Thêm bài viết (Knowledge Center)
           </h2>
           <button
             className="absolute top-6 right-6 text-white"
@@ -129,18 +149,18 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           {/* Title */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Tiêu đề (EN)"
+              label="Title (EN)"
               value={name.en || ""}
-              onChange={(v) => setName((p) => ({ ...p, en: v }))}
+              onChange={(v) => handleNameChange("en", v)}
             />
             <Input
               label="Tiêu đề (VI)"
               value={name.vi || ""}
-              onChange={(v) => setName((p) => ({ ...p, vi: v }))}
+              onChange={(v) => handleNameChange("vi", v)}
             />
           </div>
 
-          {/* Slug (auto) */}
+          {/* Slug */}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Slug (EN)"
@@ -154,7 +174,21 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
             />
           </div>
 
-          {/* Category (from CategoryService) */}
+          {/* Short description (EN/VI) */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Short description (EN)"
+              value={shortDes.en || ""}
+              onChange={(v) => setShortDes((p) => ({ ...p, en: v }))}
+            />
+            <Input
+              label="Mô tả ngắn (VI)"
+              value={shortDes.vi || ""}
+              onChange={(v) => setShortDes((p) => ({ ...p, vi: v }))}
+            />
+          </div>
+
+          {/* Category */}
           <div>
             <label className="block mb-1 text-white">Danh mục</label>
             <select
@@ -168,27 +202,28 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
               <option value="">-- Chọn danh mục --</option>
               {catOptions.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {t(c.name)}
+                  {c.name?.vi ? `${c.name.vi} (${c.name.en})` : c.name.en}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Content */}
+          {/* Content (EN drives VI) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1 text-white">Nội dung (EN)</label>
+              <label className="block mb-1 text-white">Content (EN)</label>
               <Editor
                 initialContent={content.en || ""}
-                onContentChange={(v) => setContent((p) => ({ ...p, en: v }))}
+                onContentChange={(v) => handleContentChange("en", v)}
                 folder="blog"
               />
             </div>
             <div>
               <label className="block mb-1 text-white">Nội dung (VI)</label>
               <Editor
+                key={viKey} // remount khi bị mirror từ EN
                 initialContent={content.vi || ""}
-                onContentChange={(v) => setContent((p) => ({ ...p, vi: v }))}
+                onContentChange={(v) => handleContentChange("vi", v)}
                 folder="blog"
               />
             </div>
@@ -219,7 +254,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
   );
 }
 
-/* ------------ Small UI helpers ------------ */
+/* Small UI helper */
 function Input({
   label,
   value,

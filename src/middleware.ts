@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
 
   // 3. if login redirect dashboard
   if (pathname === "/" && isLoggedIn) {
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/people`);
   }
 
   // 4. if not login redirect login form

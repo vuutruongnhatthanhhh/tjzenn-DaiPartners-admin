@@ -147,14 +147,14 @@ const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between p-4 text-white bg-black">
       <div className="flex items-center space-x-2">
-        <Link href="/dashboard">
+        <Link href="#">
           <img
             src="/images/logo.png"
             alt="Logo"
             className="w-10 h-10 cursor-pointer"
           />
         </Link>
-        <Link href="/dashboard">
+        <Link href="#">
           <div className=" font-black italic text-2xl cursor-pointer">
             {config.companyName}
           </div>
@@ -169,13 +169,10 @@ const Header: React.FC = () => {
           {!isMobile && (
             <>
               <Link
-                href="/dashboard"
+                href="/knowledge-center"
                 className="text-white hover:text-[#168bb9]"
               >
-                Thống kê
-              </Link>
-              <Link href="/user" className="text-white hover:text-[#168bb9]">
-                Người dùng
+                Kiến thức
               </Link>
 
               <Link
@@ -307,18 +304,12 @@ const Header: React.FC = () => {
             </>
           )}
           {/* <hr className="border-gray-" /> */}
-          <button
-            onClick={() => handleRouteChange("/dashboard")}
-            className="text-left"
-          >
-            Thống kê
-          </button>
 
           <button
-            onClick={() => handleRouteChange("/user")}
+            onClick={() => handleRouteChange("/knowledge-center")}
             className="text-left"
           >
-            Người dùng
+            Kiến thức
           </button>
 
           <button

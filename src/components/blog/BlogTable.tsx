@@ -116,7 +116,7 @@ export default function BlogTable() {
     <div className="min-h-screen bg-[#0f0f10] text-white p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold">
-          Quản lý bài viết{" "}
+          Knowledge center{" "}
           <span className="text-3xl font-bold text-green-600">
             ({totalBlogs})
           </span>

@@ -10,14 +10,12 @@ import { getAllCategories, type Category } from "@/services/CategoryService";
 import { slugify } from "@/utils/slugify";
 
 interface BlogUpdateProps {
-  blog: Blog; // { id, name{vi,en}, slug{vi,en}, content{vi,en}, category }
+  blog: Blog; // { id, name{vi,en}, slug{vi,en}, content{vi,en}, short_des{vi,en}, category }
   onClose: () => void;
   onUpdate: (updatedBlog: Blog) => void;
 }
 
 const emptyI18N: I18N = { vi: "", en: "" };
-const t = (i18n?: I18N, locale: "vi" | "en" = "vi") =>
-  (i18n?.[locale] ?? i18n?.en ?? i18n?.vi ?? "").trim();
 
 export default function BlogUpdate({
   blog,
@@ -28,6 +26,9 @@ export default function BlogUpdate({
 
   const [name, setName] = useState<I18N>(blog.name || { ...emptyI18N });
   const [slug, setSlug] = useState<I18N>(blog.slug || { ...emptyI18N });
+  const [shortDes, setShortDes] = useState<I18N>(
+    blog.short_des || { ...emptyI18N }
+  ); // 👈 NEW
   const [content, setContent] = useState<I18N>(
     blog.content || { ...emptyI18N }
   );
@@ -55,14 +56,16 @@ export default function BlogUpdate({
     };
   }, []);
 
-  // Auto update slug khi đổi tiêu đề
+  // Auto update slug: EN theo title EN, VI theo title VI
   useEffect(() => {
-    setSlug({
-      en: slugify(name.en || ""),
-      vi: slugify(name.vi || ""),
-    });
+    setSlug((p) => ({ ...p, en: slugify(name.en || "") }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name.en, name.vi]);
+  }, [name.en]);
+
+  useEffect(() => {
+    setSlug((p) => ({ ...p, vi: slugify(name.vi || "") }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name.vi]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +86,7 @@ export default function BlogUpdate({
       const payload: Partial<Blog> = {
         name: { en: name.en || "", vi: name.vi || "" },
         slug: { en: slug.en || "", vi: slug.vi || "" },
+        short_des: { en: shortDes.en || "", vi: shortDes.vi || "" }, // 👈 NEW
         content: { en: content.en || "", vi: content.vi || "" },
         category: Number(category),
       };
@@ -103,7 +107,7 @@ export default function BlogUpdate({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-3xl h-[90vh] relative flex flex-col">
+      <div className="bg-[#1c1c1e] rounded-xl w-full max-w-7xl h-[90vh] relative flex flex-col">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#1c1c1e] p-6 border-b border-white/10">
           <h2 className="text-2xl font-bold text-white">Cập nhật bài viết</h2>
@@ -124,7 +128,7 @@ export default function BlogUpdate({
           {/* Title */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Tiêu đề (EN)"
+              label="Title (EN)"
               value={name.en || ""}
               onChange={(v) => setName((p) => ({ ...p, en: v }))}
             />
@@ -149,6 +153,20 @@ export default function BlogUpdate({
             />
           </div>
 
+          {/* Short description (EN/VI) */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Short description (EN)"
+              value={shortDes.en || ""}
+              onChange={(v) => setShortDes((p) => ({ ...p, en: v }))}
+            />
+            <Input
+              label="Mô tả ngắn (VI)"
+              value={shortDes.vi || ""}
+              onChange={(v) => setShortDes((p) => ({ ...p, vi: v }))}
+            />
+          </div>
+
           {/* Category */}
           <div>
             <label className="block mb-1 text-white">Danh mục</label>
@@ -161,18 +179,23 @@ export default function BlogUpdate({
               disabled={isLoadingCats}
             >
               <option value="">-- Chọn danh mục --</option>
-              {catOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {t(c.name)}
-                </option>
-              ))}
+              {catOptions.map((c) => {
+                const vi = (c.name?.vi ?? "").trim();
+                const en = (c.name?.en ?? "").trim();
+                const label = vi ? `${vi} (${en})` : en || "-";
+                return (
+                  <option key={c.id} value={c.id}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
           {/* Content */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1 text-white">Nội dung (EN)</label>
+              <label className="block mb-1 text-white">Content (EN)</label>
               <Editor
                 initialContent={content.en || ""}
                 onContentChange={(v) => setContent((p) => ({ ...p, en: v }))}
@@ -228,7 +251,7 @@ function Input({
     <div>
       <label className="block mb-1 text-white">{label}</label>
       <input
-        className="w-full px-4 py-2 rounded-lg bg黑 text-white border border-gray-600"
+        className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600 placeholder-gray-400"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

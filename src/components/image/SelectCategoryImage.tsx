@@ -18,9 +18,8 @@ const SelectCategory: React.FC<ImageCategorySelectProps> = ({
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-black"
       >
-        <option value="course">Khóa học</option>
         <option value="blog">Bài viết</option>
-        <option value="people">Nhân sự</option>
+        <option value="people">Đội ngũ</option>
       </select>
     </div>
   );

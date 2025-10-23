@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     if (res?.ok) {
       toast.success("Đăng nhập thành công");
-      router.push("/dashboard");
+      router.push("/people");
     } else {
       toast.error("Đăng nhập thất bại", {
         description: res?.error || "Sai email hoặc mật khẩu",
