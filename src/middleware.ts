@@ -8,12 +8,12 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
   // 1. Redirect if vercel.app
-  if (host.endsWith(".vercel.app")) {
-    const url = request.nextUrl.clone();
-    url.host = "admin.tjzenn.com";
-    url.protocol = "https:";
-    return NextResponse.redirect(url, 301);
-  }
+  // if (host.endsWith(".vercel.app")) {
+  //   const url = request.nextUrl.clone();
+  //   url.host = "admin.tjzenn.com";
+  //   url.protocol = "https:";
+  //   return NextResponse.redirect(url, 301);
+  // }
 
   // 2. getInfo in token
   const token = await getToken({

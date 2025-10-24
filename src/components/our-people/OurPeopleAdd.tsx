@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, FileText, Trash2, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageBox from "@/components/image/ImageBox";
-import CvBox from "@/components/our-people/CvBox"; // <-- dùng lại CvBox
+import CvBox from "@/components/our-people/CvBox"; // dùng lại CvBox
 import { createPerson, OurPeople, I18N } from "@/services/OurPeopleService";
 
 interface AddPeopleModalProps {
@@ -25,7 +25,7 @@ const formatBytes = (bytes: number) => {
 };
 
 const lines = (s: string) =>
-  s
+  (s || "")
     .split("\n")
     .map((x) => x.trim())
     .filter(Boolean);
@@ -86,18 +86,8 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
     setAwards((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // ====== MIRROR chỉ cho TEXT (giữ nguyên), KHÔNG áp dụng cho CV ======
-  const [autoSync, setAutoSync] = useState(true); // dùng cho text fields
-  const mirrorRef = useRef({
-    name: "",
-    position: "",
-    area: "",
-    professional_summary: "",
-    eng: "",
-    bar: "",
-    edu: "",
-  });
-  const onEnChange =
+  // ✅ KHÔNG ĐỒNG BỘ: update độc lập theo ngôn ngữ
+  const onChangeEN =
     (
       key: keyof Pick<
         OurPeople,
@@ -105,14 +95,11 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
       >
     ) =>
     (v: string) => {
-      const prev = form[key] || {};
-      const shouldMirror =
-        autoSync && (!prev.vi || prev.vi === (mirrorRef.current as any)[key]);
-      const next: I18N = { en: v, vi: shouldMirror ? v : prev.vi || "" };
-      (mirrorRef.current as any)[key] = v;
-      setForm({ ...form, [key]: next } as OurPeople);
+      const prev = (form[key] as I18N) || {};
+      setForm({ ...form, [key]: { ...prev, en: v } } as OurPeople);
     };
-  const onViChange =
+
+  const onChangeVI =
     (
       key: keyof Pick<
         OurPeople,
@@ -120,30 +107,11 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
       >
     ) =>
     (v: string) => {
-      const prev = form[key] || {};
+      const prev = (form[key] as I18N) || {};
       setForm({ ...form, [key]: { ...prev, vi: v } } as OurPeople);
     };
-  const onPairEnChange = (pair: "eng" | "bar" | "edu") => (v: string) => {
-    const viVal = { eng: engVI, bar: barVI, edu: eduVI }[pair];
-    const shouldMirror =
-      autoSync && (!viVal || viVal === (mirrorRef.current as any)[pair]);
-    if (pair === "eng") setEngEN(v);
-    if (pair === "bar") setBarEN(v);
-    if (pair === "edu") setEduEN(v);
-    if (shouldMirror) {
-      if (pair === "eng") setEngVI(v);
-      if (pair === "bar") setBarVI(v);
-      if (pair === "edu") setEduVI(v);
-    }
-    (mirrorRef.current as any)[pair] = v;
-  };
-  const onPairViChange = (pair: "eng" | "bar" | "edu") => (v: string) => {
-    if (pair === "eng") setEngVI(v);
-    if (pair === "bar") setBarVI(v);
-    if (pair === "edu") setEduVI(v);
-  };
 
-  // ==== CV: CHỌN TỪ POPUP THƯ MỤC cv/ (KHÔNG mirror EN->VI) ====
+  // ==== CV: CHỌN TỪ POPUP THƯ MỤC cv/ (độc lập EN/VI)
   const [showCvPickerEN, setShowCvPickerEN] = useState(false);
   const [showCvPickerVI, setShowCvPickerVI] = useState(false);
 
@@ -161,7 +129,7 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
     setForm((f) => ({ ...f, cv: { ...(f.cv || {}), vi: url } }));
   };
 
-  // Preview: hiển thị tên file, click tải về (không có badge “đồng bộ từ EN”)
+  // Preview tên file CV
   const cvEnPreview = useMemo(
     () =>
       form.cv.en
@@ -192,7 +160,6 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
     try {
       setIsSubmitting(true);
 
-      // KHÔNG mirror CV
       const payload: OurPeople = {
         ...form,
         cv: { en: form.cv.en || "", vi: form.cv.vi || "" },
@@ -291,12 +258,12 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Input
               label="Name (EN)"
               value={form.name.en || ""}
-              onChange={onEnChange("name")}
+              onChange={onChangeEN("name")}
             />
             <Input
               label="Tên (VI)"
               value={form.name.vi || ""}
-              onChange={onViChange("name")}
+              onChange={onChangeVI("name")}
             />
           </div>
 
@@ -305,12 +272,12 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Input
               label="Position (EN)"
               value={form.position.en || ""}
-              onChange={onEnChange("position")}
+              onChange={onChangeEN("position")}
             />
             <Input
               label="Chức danh (VI)"
               value={form.position.vi || ""}
-              onChange={onViChange("position")}
+              onChange={onChangeVI("position")}
             />
           </div>
 
@@ -319,12 +286,12 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Input
               label="Area (EN)"
               value={form.area.en || ""}
-              onChange={onEnChange("area")}
+              onChange={onChangeEN("area")}
             />
             <Input
               label="Khu vực (VI)"
               value={form.area.vi || ""}
-              onChange={onViChange("area")}
+              onChange={onChangeVI("area")}
             />
           </div>
 
@@ -414,12 +381,12 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Textarea
               label="Professional summary (EN)"
               value={form.professional_summary.en || ""}
-              onChange={onEnChange("professional_summary")}
+              onChange={onChangeEN("professional_summary")}
             />
             <Textarea
               label="Tóm tắt nghề nghiệp (VI)"
               value={form.professional_summary.vi || ""}
-              onChange={onViChange("professional_summary")}
+              onChange={onChangeVI("professional_summary")}
             />
           </div>
 
@@ -428,14 +395,14 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Textarea
               label="Notable engagements (EN)"
               value={engEN}
-              onChange={onPairEnChange("eng")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setEngEN}
+              placeholder="Mỗi dòng là một mục (EN)"
             />
             <Textarea
               label="Thương vụ tiêu biểu (VI)"
               value={engVI}
-              onChange={onPairViChange("eng")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setEngVI}
+              placeholder="Mỗi dòng là một mục (VI)"
             />
           </div>
 
@@ -444,14 +411,14 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Textarea
               label="Bar admissions (EN)"
               value={barEN}
-              onChange={onPairEnChange("bar")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setBarEN}
+              placeholder="Mỗi dòng là một mục (EN)"
             />
             <Textarea
               label="Quốc gia hành nghề (VI)"
               value={barVI}
-              onChange={onPairViChange("bar")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setBarVI}
+              placeholder="Mỗi dòng là một mục (VI)"
             />
           </div>
 
@@ -460,14 +427,14 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             <Textarea
               label="Education (EN)"
               value={eduEN}
-              onChange={onPairEnChange("edu")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setEduEN}
+              placeholder="Mỗi dòng là một mục (EN)"
             />
             <Textarea
               label="Học vấn (VI)"
               value={eduVI}
-              onChange={onPairViChange("edu")}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setEduVI}
+              placeholder="Mỗi dòng là một mục (VI)"
             />
           </div>
 
@@ -597,7 +564,6 @@ function Input({
         className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        required
       />
     </div>
   );

@@ -156,7 +156,7 @@ const Header: React.FC = () => {
         </Link>
         <Link href="#">
           <div className=" font-black italic text-2xl cursor-pointer">
-            {config.companyName}
+            DAI & PARTNERS
           </div>
         </Link>
       </div>
@@ -168,6 +168,9 @@ const Header: React.FC = () => {
         >
           {!isMobile && (
             <>
+              <Link href="/user" className="text-white hover:text-[#168bb9]">
+                Tài khoản
+              </Link>
               <Link
                 href="/knowledge-center"
                 className="text-white hover:text-[#168bb9]"
@@ -304,6 +307,12 @@ const Header: React.FC = () => {
             </>
           )}
           {/* <hr className="border-gray-" /> */}
+          <button
+            onClick={() => handleRouteChange("/user")}
+            className="text-left"
+          >
+            Tài khoản
+          </button>
 
           <button
             onClick={() => handleRouteChange("/knowledge-center")}

@@ -1,7 +1,7 @@
 // app/(wherever)/CareerAdd.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { I18N, Career } from "@/services/CareerService";
@@ -39,25 +39,11 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
     type: { ...emptyI18N },
     gender: { ...emptyI18N },
     job_description: { ...emptyI18N },
-    // NOTE: service đã đổi job_requirements: I18N[]; ở form mình nhập qua 2 textarea rồi zip
-    job_requirements: [] as unknown as Career["job_requirements"],
+    job_requirements: [] as Career["job_requirements"],
     email: "",
   });
 
-  // ====== Mirror EN -> VI (toggle) ======
-  const [autoSync, setAutoSync] = useState(true);
-  const mirrorRef = useRef({
-    name: "",
-    location: "",
-    age: "",
-    salary: "",
-    type: "",
-    gender: "",
-    job_description: "",
-    // cặp yêu cầu (textarea pair)
-    req: "",
-  });
-
+  // ✅ KHÔNG ĐỒNG BỘ: cập nhật độc lập từng ngôn ngữ
   const onEnChange =
     (
       key: keyof Pick<
@@ -73,11 +59,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
     ) =>
     (v: string) => {
       const prev = (form[key] as I18N) || {};
-      const shouldMirror =
-        autoSync && (!prev.vi || prev.vi === (mirrorRef.current as any)[key]);
-      const next: I18N = { en: v, vi: shouldMirror ? v : prev.vi || "" };
-      (mirrorRef.current as any)[key] = v;
-      setForm({ ...form, [key]: next } as Career);
+      setForm({ ...form, [key]: { ...prev, en: v } } as Career);
     };
 
   const onViChange =
@@ -98,18 +80,9 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
       setForm({ ...form, [key]: { ...prev, vi: v } } as Career);
     };
 
-  // ==== Job requirements: textarea pair -> mảng I18N ====
+  // ✅ Job requirements: nhập độc lập EN/VI (không mirror)
   const [reqEN, setReqEN] = useState("");
   const [reqVI, setReqVI] = useState("");
-
-  const onReqEnChange = (v: string) => {
-    const shouldMirror =
-      autoSync && (!reqVI || reqVI === mirrorRef.current.req);
-    setReqEN(v);
-    if (shouldMirror) setReqVI(v);
-    mirrorRef.current.req = v;
-  };
-  const onReqViChange = (v: string) => setReqVI(v);
 
   // ====== Submit ======
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,15 +91,17 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!form.name?.vi && !form.name?.en)
-      return toast.warning("Vui lòng nhập vị trí tuyển dụng (VI/EN)");
+    if (!form.name?.vi && !form.name?.en) {
+      toast.warning("Vui lòng nhập vị trí tuyển dụng (VI hoặc EN)");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
 
       const payload: Career = {
         ...form,
-        name: { en: form.name.en || "", vi: form.name.vi || "" },
+        name: { en: form.name?.en || "", vi: form.name?.vi || "" },
         location: { en: form.location?.en || "", vi: form.location?.vi || "" },
         age: { en: form.age?.en || "", vi: form.age?.vi || "" },
         salary: { en: form.salary?.en || "", vi: form.salary?.vi || "" },
@@ -136,7 +111,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           en: form.job_description?.en || "",
           vi: form.job_description?.vi || "",
         },
-        // 🎯 chuyển 2 textarea thành mảng I18N[]
+        // chuyển 2 textarea thành mảng I18N[]
         job_requirements: zipI18NArray(
           reqVI,
           reqEN
@@ -157,6 +132,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
     }
   };
 
+  // lock body scroll khi mở modal
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -174,23 +150,14 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
             <h2 className="text-2xl font-bold text-white">
               Thêm tin tuyển dụng (Career)
             </h2>
-            <div className="flex items-center gap-4">
-              {/* <label className="text-sm text-gray-300 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                />
-                Tự đồng bộ EN → VI
-              </label> */}
-              <button
-                className="text-white"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              className="text-white"
+              onClick={onClose}
+              disabled={isSubmitting}
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -201,7 +168,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           className="flex-1 overflow-auto px-6 py-4 space-y-6"
         >
           {/* Name */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Position (EN)"
               value={form.name.en || ""}
@@ -215,7 +182,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Location */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Location (EN)"
               value={form.location?.en || ""}
@@ -229,7 +196,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Age */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Age (EN)"
               value={form.age?.en || ""}
@@ -243,7 +210,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Salary */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Salary (EN)"
               value={form.salary?.en || ""}
@@ -257,7 +224,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Type */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Job type (EN)"
               value={form.type?.en || ""}
@@ -271,7 +238,7 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Gender */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Gender (EN)"
               value={form.gender?.en || ""}
@@ -285,12 +252,12 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
           </div>
 
           {/* Description */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Textarea
               label="Job description (EN)"
               value={form.job_description?.en || ""}
               onChange={onEnChange("job_description")}
-              placeholder="Mô tả công việc – EN"
+              placeholder="Job description – EN"
             />
             <Textarea
               label="Mô tả công việc (VI)"
@@ -300,19 +267,19 @@ export default function CareerAdd({ onClose, onAdd }: AddCareerModalProps) {
             />
           </div>
 
-          {/* Requirements: textarea pair -> list */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Requirements: textarea pair -> list (độc lập) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Textarea
               label="Job requirements (EN)"
               value={reqEN}
-              onChange={onReqEnChange}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setReqEN}
+              placeholder="Mỗi dòng là một yêu cầu (EN)"
             />
             <Textarea
               label="Yêu cầu công việc (VI)"
               value={reqVI}
-              onChange={onReqViChange}
-              placeholder="Khi xuống dòng tự động thêm gạch đầu dòng bên client"
+              onChange={setReqVI}
+              placeholder="Mỗi dòng là một yêu cầu (VI)"
             />
           </div>
 

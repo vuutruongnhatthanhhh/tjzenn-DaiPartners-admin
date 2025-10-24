@@ -98,7 +98,7 @@ export default function UserTable() {
     <div className="min-h-screen bg-[#0f0f10] text-white p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold">
-          Quản lý người dùng{" "}
+          Quản lý tài khoản{" "}
           <span className="text-3xl font-bold text-green-600">
             ({totalUsers})
           </span>
@@ -107,7 +107,7 @@ export default function UserTable() {
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-buttonRoot rounded-xl self-start md:self-auto"
         >
-          <Plus className="w-4 h-4" /> Thêm người dùng
+          <Plus className="w-4 h-4" /> Thêm tài khoản
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export default function UserTable() {
                   </td>
                   <td className="px-4 py-3 text-right rounded-r-xl">
                     <div className="flex justify-end gap-2">
-                      <button
+                      {/* <button
                         onClick={() => setSelectedUser(user)}
                         className="hover:text-yellow-400"
                       >
@@ -191,7 +191,7 @@ export default function UserTable() {
                         className="hover:text-red-500"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </button> */}
                     </div>
                   </td>
                 </tr>

@@ -1,7 +1,7 @@
 // app/(wherever)/CategoryAdd.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { I18N, Category } from "@/services/CategoryService";
@@ -18,45 +18,33 @@ export default function CategoryAdd({ onClose, onAdd }: AddCategoryModalProps) {
   const [form, setForm] = useState<Category>({
     name: { ...emptyI18N },
   });
-
-  // Auto-sync EN -> VI cho tiện nhập nhanh
-  const [autoSync, setAutoSync] = useState(true);
-  const mirrorRef = useRef({ name: "" });
-
-  const onEnChange = (key: keyof Pick<Category, "name">) => (v: string) => {
-    const prev = (form[key] as I18N) || {};
-    const shouldMirror =
-      autoSync && (!prev.vi || prev.vi === mirrorRef.current.name);
-    const next: I18N = { en: v, vi: shouldMirror ? v : prev.vi || "" };
-    mirrorRef.current.name = v;
-    setForm({ ...form, [key]: next } as Category);
-  };
-
-  const onViChange = (key: keyof Pick<Category, "name">) => (v: string) => {
-    const prev = (form[key] as I18N) || {};
-    setForm({ ...form, [key]: { ...prev, vi: v } } as Category);
-  };
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ KHÔNG ĐỒNG BỘ: update độc lập từng ngôn ngữ
+  const onChangeEN = (v: string) => {
+    setForm((prev) => ({ ...prev, name: { ...prev.name, en: v } }));
+  };
+  const onChangeVI = (v: string) => {
+    setForm((prev) => ({ ...prev, name: { ...prev.name, vi: v } }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
     if (!form.name?.vi && !form.name?.en) {
-      return toast.warning("Vui lòng nhập tên danh mục (VI hoặc EN)");
+      toast.warning("Vui lòng nhập tên danh mục (VI hoặc EN)");
+      return;
     }
 
     try {
       setIsSubmitting(true);
-
       const payload: Category = {
         name: {
           en: form.name?.en || "",
           vi: form.name?.vi || "",
         },
       };
-
       const created = await createCategory(payload);
       toast.success("Đã tạo danh mục thành công");
       onAdd(created);
@@ -71,6 +59,7 @@ export default function CategoryAdd({ onClose, onAdd }: AddCategoryModalProps) {
     }
   };
 
+  // lock body scroll khi mở modal
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -88,24 +77,14 @@ export default function CategoryAdd({ onClose, onAdd }: AddCategoryModalProps) {
             <h2 className="text-2xl font-bold text-white">
               Thêm danh mục (Category)
             </h2>
-            <div className="flex items-center gap-4">
-              {/* Toggle auto sync EN -> VI */}
-              {/* <label className="text-sm text-gray-300 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                />
-                Tự đồng bộ EN → VI
-              </label> */}
-              <button
-                className="text-white"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              className="text-white"
+              onClick={onClose}
+              disabled={isSubmitting}
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -115,16 +94,16 @@ export default function CategoryAdd({ onClose, onAdd }: AddCategoryModalProps) {
           onSubmit={handleSubmit}
           className="flex-1 overflow-auto px-6 py-4 space-y-6"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Category name (EN)"
               value={form.name?.en || ""}
-              onChange={onEnChange("name")}
+              onChange={onChangeEN}
             />
             <Input
               label="Tên danh mục (VI)"
               value={form.name?.vi || ""}
-              onChange={onViChange("name")}
+              onChange={onChangeVI}
             />
           </div>
         </form>

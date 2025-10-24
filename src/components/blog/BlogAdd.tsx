@@ -28,9 +28,6 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
   const [catOptions, setCatOptions] = useState<Category[]>([]);
   const [isLoadingCats, setIsLoadingCats] = useState(false);
 
-  // chỉ cần remount VI editor khi EN thay đổi
-  const [viKey, setViKey] = useState(0);
-
   // Load categories
   useEffect(() => {
     (async () => {
@@ -56,26 +53,13 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
     setSlug((prev) => ({ ...prev, vi: slugify(name.vi || "") }));
   }, [name.vi]);
 
-  // EN -> VI (Title)
+  // KHÔNG đồng bộ: chỉ update field đúng ngôn ngữ
   const handleNameChange = (lang: "en" | "vi", value: string) => {
-    if (lang === "en") {
-      setName({ en: value, vi: value });
-    } else {
-      // VI chỉ cập nhật VI, không ảnh hưởng EN
-      setName((p) => ({ ...p, vi: value }));
-    }
+    setName((prev) => ({ ...prev, [lang]: value }));
   };
 
-  // EN -> VI (Content)
   const handleContentChange = (lang: "en" | "vi", value: string) => {
-    if (lang === "en") {
-      setContent({ en: value, vi: value });
-      // remount VI editor để phản ánh nội dung mới từ EN
-      setViKey((k) => k + 1);
-    } else {
-      // VI chỉ cập nhật VI, không ảnh hưởng EN
-      setContent((p) => ({ ...p, vi: value }));
-    }
+    setContent((prev) => ({ ...prev, [lang]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,6 +119,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           <button
             className="absolute top-6 right-6 text-white"
             onClick={onClose}
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -147,7 +132,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           className="flex-1 overflow-auto px-6 py-4 space-y-6"
         >
           {/* Title */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Title (EN)"
               value={name.en || ""}
@@ -161,7 +146,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           </div>
 
           {/* Slug */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Slug (EN)"
               value={slug.en || ""}
@@ -175,7 +160,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
           </div>
 
           {/* Short description (EN/VI) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Short description (EN)"
               value={shortDes.en || ""}
@@ -208,7 +193,7 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
             </select>
           </div>
 
-          {/* Content (EN drives VI) */}
+          {/* Content: VI & EN độc lập */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 text-white">Content (EN)</label>
@@ -221,7 +206,6 @@ export default function BlogAdd({ onClose, onAdd }: AddBlogModalProps) {
             <div>
               <label className="block mb-1 text-white">Nội dung (VI)</label>
               <Editor
-                key={viKey} // remount khi bị mirror từ EN
                 initialContent={content.vi || ""}
                 onContentChange={(v) => handleContentChange("vi", v)}
                 folder="blog"
