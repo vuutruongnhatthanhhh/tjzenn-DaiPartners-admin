@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ImageBox from "@/components/image/ImageBox";
 import CvBox from "@/components/our-people/CvBox"; // dùng lại CvBox
 import { createPerson, OurPeople, I18N } from "@/services/OurPeopleService";
+import Editor from "@/components/editor/EditorShort";
 
 interface AddPeopleModalProps {
   onClose: () => void;
@@ -376,18 +377,29 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
             </div>
           </div>
 
-          {/* Professional Summary i18n */}
-          <div className="grid grid-cols-2 gap-4">
-            <Textarea
-              label="Professional summary (EN)"
-              value={form.professional_summary.en || ""}
-              onChange={onChangeEN("professional_summary")}
-            />
-            <Textarea
-              label="Tóm tắt nghề nghiệp (VI)"
-              value={form.professional_summary.vi || ""}
-              onChange={onChangeVI("professional_summary")}
-            />
+          {/* Professional Summary i18n - dùng Editor */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 text-white">
+                Professional summary (EN)
+              </label>
+              <Editor
+                initialContent={form.professional_summary.en || ""}
+                onContentChange={onChangeEN("professional_summary")}
+                folder="people"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-white">
+                Tóm tắt nghề nghiệp (VI)
+              </label>
+              <Editor
+                initialContent={form.professional_summary.vi || ""}
+                onContentChange={onChangeVI("professional_summary")}
+                folder="people"
+              />
+            </div>
           </div>
 
           {/* Notable engagements */}

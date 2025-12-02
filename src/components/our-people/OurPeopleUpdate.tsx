@@ -7,6 +7,7 @@ import ImageBox from "@/components/image/ImageBox";
 import CvBox from "@/components/our-people/CvBox"; // <-- thêm đường dẫn phù hợp
 import { OurPeople, I18N, updatePerson } from "@/services/OurPeopleService";
 import { supabase } from "@/lib/supabaseClient";
+import Editor from "@/components/editor/EditorShort";
 
 interface OurPeopleUpdateProps {
   person: OurPeople;
@@ -402,34 +403,45 @@ export default function OurPeopleUpdate({
             </div>
           </div>
 
-          {/* Professional Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            <Textarea
-              label="Professional summary (EN)"
-              value={form.professional_summary?.en || ""}
-              onChange={(v) =>
-                setForm({
-                  ...form,
-                  professional_summary: {
-                    ...(form.professional_summary || {}),
-                    en: v,
-                  },
-                })
-              }
-            />
-            <Textarea
-              label="Tóm tắt nghề nghiệp (VI)"
-              value={form.professional_summary?.vi || ""}
-              onChange={(v) =>
-                setForm({
-                  ...form,
-                  professional_summary: {
-                    ...(form.professional_summary || {}),
-                    vi: v,
-                  },
-                })
-              }
-            />
+          {/* Professional Summary - dùng Editor EN/VI độc lập */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 text-white">
+                Professional summary (EN)
+              </label>
+              <Editor
+                initialContent={form.professional_summary?.en || ""}
+                onContentChange={(v) =>
+                  setForm({
+                    ...form,
+                    professional_summary: {
+                      ...(form.professional_summary || {}),
+                      en: v,
+                    },
+                  })
+                }
+                folder="people"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-white">
+                Tóm tắt nghề nghiệp (VI)
+              </label>
+              <Editor
+                initialContent={form.professional_summary?.vi || ""}
+                onContentChange={(v) =>
+                  setForm({
+                    ...form,
+                    professional_summary: {
+                      ...(form.professional_summary || {}),
+                      vi: v,
+                    },
+                  })
+                }
+                folder="people"
+              />
+            </div>
           </div>
 
           {/* Notable, Bar, Education */}
