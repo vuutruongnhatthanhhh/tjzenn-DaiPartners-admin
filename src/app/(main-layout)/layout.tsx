@@ -12,7 +12,7 @@ export default function AdminLayout({
     <>
       <SessionProvider>
         <Header />
-        <Toaster position="top-center" richColors />
+
         <main className="flex-grow w-full">{children}</main>
       </SessionProvider>
     </>

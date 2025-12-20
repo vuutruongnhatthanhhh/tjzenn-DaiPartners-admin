@@ -7,7 +7,7 @@ import ImageBox from "@/components/image/ImageBox";
 import CvBox from "@/components/our-people/CvBox"; // <-- thêm đường dẫn phù hợp
 import { OurPeople, I18N, updatePerson } from "@/services/OurPeopleService";
 import { supabase } from "@/lib/supabaseClient";
-import Editor from "@/components/editor/EditorShort";
+import EditorShort from "@/components/editor/EditorShort";
 
 interface OurPeopleUpdateProps {
   person: OurPeople;
@@ -409,7 +409,7 @@ export default function OurPeopleUpdate({
               <label className="block mb-1 text-white">
                 Professional summary (EN)
               </label>
-              <Editor
+              <EditorShort
                 initialContent={form.professional_summary?.en || ""}
                 onContentChange={(v) =>
                   setForm({
@@ -428,7 +428,7 @@ export default function OurPeopleUpdate({
               <label className="block mb-1 text-white">
                 Tóm tắt nghề nghiệp (VI)
               </label>
-              <Editor
+              <EditorShort
                 initialContent={form.professional_summary?.vi || ""}
                 onContentChange={(v) =>
                   setForm({

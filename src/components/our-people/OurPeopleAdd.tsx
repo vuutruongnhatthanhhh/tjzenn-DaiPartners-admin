@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import ImageBox from "@/components/image/ImageBox";
 import CvBox from "@/components/our-people/CvBox"; // dùng lại CvBox
 import { createPerson, OurPeople, I18N } from "@/services/OurPeopleService";
-import Editor from "@/components/editor/EditorShort";
+import EditorShort from "@/components/editor/EditorShort";
 
 interface AddPeopleModalProps {
   onClose: () => void;
@@ -383,7 +383,7 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
               <label className="block mb-1 text-white">
                 Professional summary (EN)
               </label>
-              <Editor
+              <EditorShort
                 initialContent={form.professional_summary.en || ""}
                 onContentChange={onChangeEN("professional_summary")}
                 folder="people"
@@ -394,7 +394,7 @@ export default function OurPeopleAdd({ onClose, onAdd }: AddPeopleModalProps) {
               <label className="block mb-1 text-white">
                 Tóm tắt nghề nghiệp (VI)
               </label>
-              <Editor
+              <EditorShort
                 initialContent={form.professional_summary.vi || ""}
                 onContentChange={onChangeVI("professional_summary")}
                 folder="people"

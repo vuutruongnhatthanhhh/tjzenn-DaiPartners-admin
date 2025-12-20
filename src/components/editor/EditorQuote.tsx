@@ -327,7 +327,7 @@ const EditorShort = ({
           )}
         </div>
 
-        {/* <button
+        <button
           type="button"
           className="bg-white text-black px-2 py-1 rounded hover:bg-gray-200 inline-flex items-center gap-2"
           onClick={handleAddQuoteCard}
@@ -335,7 +335,7 @@ const EditorShort = ({
         >
           <Quote className="w-4 h-4" />
           Quote
-        </button> */}
+        </button>
       </div>
 
       <EditorContent editor={editor} />
