@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 
 const ABOUT_ITEMS = [
+  { label: "Trang chủ", href: "/home" },
   { label: "Tổng quan", href: "/about" },
   { label: "Văn phòng", href: "/about/offices" },
   { label: "Dự án tiêu biểu", href: "/about/projects" },
@@ -18,13 +19,18 @@ const ABOUT_ITEMS = [
 ];
 
 const CAREER_ITEMS = [
-  { label: "Tổng quan", href: "/career-content" }, // trang nội dung chính (career_content)
-  { label: "Vị trí", href: "/career" }, // trang list vị trí tuyển dụng (anh tạo sau)
+  { label: "Tổng quan", href: "/career-content" },
+  { label: "Vị trí", href: "/career" },
 ];
 
 const KNOWLEDGE_ITEMS = [
   { label: "Bài viết", href: "/knowledge-center" },
   { label: "Danh mục", href: "/category" },
+];
+
+const PRACTICE_ITEMS = [
+  { label: "Lĩnh vực cha", href: "/practices" },
+  { label: "Lĩnh vực con", href: "/practice-child" },
 ];
 
 const Header: React.FC = () => {
@@ -41,19 +47,22 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const [isCourseSubOpen, setCourseSubOpen] = useState(false);
   const [isServiceSubOpen, setServiceSubOpen] = useState(false);
+
   // Desktop hover
   const [isKnowledgeSubOpen, setIsKnowledgeSubOpen] = useState(false);
+  const [isPracticeSubOpen, setIsPracticeSubOpen] = useState(false);
 
   // Mobile accordion
   const [isKnowledgeMobileOpen, setIsKnowledgeMobileOpen] = useState(false);
+  const [isPracticeMobileOpen, setIsPracticeMobileOpen] = useState(false);
 
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const [isAboutSubOpen, setIsAboutSubOpen] = useState(false); // desktop hover dropdown
-  const [isAboutMobileOpen, setIsAboutMobileOpen] = useState(false); // mobile accordion
+  const [isAboutSubOpen, setIsAboutSubOpen] = useState(false);
+  const [isAboutMobileOpen, setIsAboutMobileOpen] = useState(false);
 
-  const [isCareerSubOpen, setIsCareerSubOpen] = useState(false); // desktop hover
-  const [isCareerMobileOpen, setIsCareerMobileOpen] = useState(false); // mobile accordion
+  const [isCareerSubOpen, setIsCareerSubOpen] = useState(false);
+  const [isCareerMobileOpen, setIsCareerMobileOpen] = useState(false);
 
   const { data: session } = useSession();
   const user = session?.user;
@@ -73,6 +82,8 @@ const Header: React.FC = () => {
     setIsCareerMobileOpen(false);
     setIsKnowledgeSubOpen(false);
     setIsKnowledgeMobileOpen(false);
+    setIsPracticeSubOpen(false);
+    setIsPracticeMobileOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -284,12 +295,43 @@ const Header: React.FC = () => {
               <Link href="/people" className="text-white hover:text-[#168bb9]">
                 Đội ngũ
               </Link>
-              <Link
-                href="/practices"
-                className="text-white hover:text-[#168bb9]"
+              <div
+                className="relative"
+                onMouseEnter={() => setIsPracticeSubOpen(true)}
+                onMouseLeave={() => setIsPracticeSubOpen(false)}
               >
-                Lĩnh vực
-              </Link>
+                <Link
+                  href="#"
+                  className="inline-flex items-center gap-1 text-white hover:text-[#168bb9]"
+                >
+                  Lĩnh vực
+                  <ChevronDown className="h-4 w-4" />
+                </Link>
+
+                <AnimatePresence>
+                  {isPracticeSubOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 top-full w-[240px] overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1f] shadow-xl"
+                    >
+                      <div className="py-2">
+                        {PRACTICE_ITEMS.map((it) => (
+                          <Link
+                            key={it.href}
+                            href={it.href}
+                            className="block px-4 py-2 text-[15px] text-white/90 hover:bg-white/10 hover:text-white"
+                          >
+                            {it.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <div
                 className="relative"
                 onMouseEnter={() => setIsAboutSubOpen(true)}
@@ -446,7 +488,6 @@ const Header: React.FC = () => {
               </div>
             </>
           )}
-          {/* <hr className="border-gray-" /> */}
           <button
             onClick={() => handleRouteChange("/user")}
             className="text-left"
@@ -494,6 +535,7 @@ const Header: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+
           <div className="pt-1">
             <button
               type="button"
@@ -534,18 +576,55 @@ const Header: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+
           <button
             onClick={() => handleRouteChange("/people")}
             className="text-left"
           >
             Đội ngũ
           </button>
-          <button
-            onClick={() => handleRouteChange("/practices")}
-            className="text-left"
-          >
-            Lĩnh vực
-          </button>
+
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setIsPracticeMobileOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <span>Lĩnh vực</span>
+              <ChevronDown
+                className={`h-5 w-5 transition-transform ${
+                  isPracticeMobileOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {isPracticeMobileOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-2 pl-3 text-[16px] font-medium text-white/90">
+                    {PRACTICE_ITEMS.map((it) => (
+                      <button
+                        key={it.href}
+                        type="button"
+                        onClick={() => handleRouteChange(it.href)}
+                        className="flex w-full items-center gap-2 text-left hover:text-[#79d4f6]"
+                      >
+                        <ChevronRight className="h-4 w-4 opacity-80" />
+                        <span>{it.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <div className="pt-1">
             <button
               type="button"
