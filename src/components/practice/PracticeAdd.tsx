@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import Editor from "@/components/editor/Editor";
 import { slugify } from "@/utils/slugify";
+import ImageBox from "@/components/image/ImageBox";
 
 import {
   createPractice,
@@ -38,6 +39,8 @@ export default function PracticeAdd({ onClose, onAdd }: AddPracticeModalProps) {
   const [title, setTitle] = useState<I18N>({ ...emptyI18N });
   const [url, setUrl] = useState("");
   const [content, setContent] = useState<I18N>({ ...emptyI18N });
+  const [image, setImage] = useState<string>("");
+  const [showImageBox, setShowImageBox] = useState(false);
 
   const [people, setPeople] = useState<OurPeople[]>([]);
   const [peopleIds, setPeopleIds] = useState<number[]>([]);
@@ -102,6 +105,7 @@ export default function PracticeAdd({ onClose, onAdd }: AddPracticeModalProps) {
         title: { en: title.en || "", vi: title.vi || "" },
         content: { en: content.en || "", vi: content.vi || "" },
         url,
+        image: image || null,
       });
 
       await setPracticePeople({
@@ -168,13 +172,42 @@ export default function PracticeAdd({ onClose, onAdd }: AddPracticeModalProps) {
             />
           </div>
 
-          {/* URL */}
+          {/* URL & IMAGE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="URL (auto from Title EN)"
               value={url}
               onChange={() => {}}
             />
+            <div>
+              <label className="block mb-1 text-white">
+                Banner (1920 x 640)
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowImageBox(true)}
+                className="w-full px-4 py-2 bg-buttonRoot text-white rounded-lg hover:opacity-80"
+              >
+                {image ? "Thay đổi hình ảnh" : "Chọn hình ảnh"}
+              </button>
+              {image && (
+                <div className="mt-3 relative">
+                  <img
+                    src={image}
+                    alt="Preview"
+                    className="w-full h-48 object-contain rounded-lg border border-gray-600 bg-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImage("")}
+                    className="absolute top-2 right-2 w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition-colors"
+                    title="Xóa ảnh"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* People */}
@@ -263,6 +296,16 @@ export default function PracticeAdd({ onClose, onAdd }: AddPracticeModalProps) {
           </button>
         </div>
       </div>
+
+      <ImageBox
+        open={showImageBox}
+        onClose={() => setShowImageBox(false)}
+        folder="practice"
+        handleImageSelect={(url) => {
+          setImage(url);
+          setShowImageBox(false);
+        }}
+      />
     </div>
   );
 }

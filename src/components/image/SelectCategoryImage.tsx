@@ -21,6 +21,7 @@ const SelectCategory: React.FC<ImageCategorySelectProps> = ({
         <option value="blog">Bài viết</option>
         <option value="people">Đội ngũ</option>
         <option value="offices">Văn phòng</option>
+        <option value="practice">Lĩnh vực</option>
       </select>
     </div>
   );

@@ -7,6 +7,7 @@ export interface Practice {
   url?: string | null; // unique
   title: I18N; // jsonb
   content: I18N; // jsonb
+  image?: string | null;
   created_at?: string;
 }
 
@@ -74,9 +75,10 @@ export async function getAllPractices({
       url,
       title,
       content,
+      image,
       created_at
     `,
-    { count: "exact" }
+    { count: "exact" },
   );
 
   const s = (search ?? "").trim();
@@ -87,7 +89,7 @@ export async function getAllPractices({
         `title->>vi.ilike.${like}`,
         `title->>en.ilike.${like}`,
         `url.ilike.${like}`,
-      ].join(",")
+      ].join(","),
     );
   }
 

@@ -8,6 +8,7 @@ export interface PracticeChild {
   parent?: number | null; // foreign key to practices
   title: I18N; // jsonb
   content: I18N; // jsonb
+  image?: string | null;
   created_at?: string;
 }
 
@@ -81,6 +82,7 @@ export async function getAllPracticeChildren({
       parent,
       title,
       content,
+      image,
       created_at
     `,
     { count: "exact" },
@@ -118,6 +120,17 @@ export async function getAllPracticeChildren({
 }
 
 export async function getPracticeChildrenByParent(parentId: number) {
+  const { data, error } = await supabase
+    .from("practice-child")
+    .select("*")
+    .eq("parent", parentId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as PracticeChild[];
+}
+
+export async function getPracticeChildrenByParentWithPeople(parentId: number) {
   const { data, error } = await supabase
     .from("practice-child")
     .select("*")
