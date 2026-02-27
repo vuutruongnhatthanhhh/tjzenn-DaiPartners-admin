@@ -3,11 +3,14 @@ import { supabase } from "@/lib/supabaseClient";
 export type I18N = { vi?: string; en?: string };
 
 export interface Practice {
-  id?: number; // int8
-  url?: string | null; // unique
-  title: I18N; // jsonb
-  content: I18N; // jsonb
+  id?: number;
+  url?: string | null;
+  title: I18N;
+  content: I18N;
   image?: string | null;
+  external?: boolean | null;
+  href?: string | null;
+  position?: number | null;
   created_at?: string;
 }
 
@@ -76,6 +79,9 @@ export async function getAllPractices({
       title,
       content,
       image,
+      external,
+      href,
+      position,
       created_at
     `,
     { count: "exact" },
@@ -94,6 +100,7 @@ export async function getAllPractices({
   }
 
   const { data, error, count } = await query
+    .order("position", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -131,7 +138,6 @@ export async function setPracticePeople({
 }) {
   const clean = Array.from(new Set(peopleIds.filter(Number.isFinite)));
 
-  // load current
   const { data: currentRows, error } = await supabase
     .from("practice_people")
     .select("people_id")

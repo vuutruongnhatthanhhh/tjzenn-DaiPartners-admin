@@ -1,10 +1,10 @@
+// src/components/practice/PracticeUpdate.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
-import Editor from "@/components/editor/Editor";
 import { slugify } from "@/utils/slugify";
 import ImageBox from "@/components/image/ImageBox";
 
@@ -50,6 +50,10 @@ export default function PracticeUpdate({
   const [image, setImage] = useState<string>(practice.image || "");
   const [showImageBox, setShowImageBox] = useState(false);
 
+  // New fields
+  const [external, setExternal] = useState<boolean>(practice.external ?? false);
+  const [href, setHref] = useState<string>(practice.href || "");
+
   const [people, setPeople] = useState<OurPeople[]>([]);
   const [peopleIds, setPeopleIds] = useState<number[]>([]);
   const [isLoadingPeople, setIsLoadingPeople] = useState(false);
@@ -59,14 +63,11 @@ export default function PracticeUpdate({
     (async () => {
       try {
         setIsLoadingPeople(true);
-
         const [resPeople, ids] = await Promise.all([
           getAllPeople({ page: 1, limit: 200, search: "" }),
           getPracticePeopleIds(practice.id as number),
         ]);
-
         if (!mounted) return;
-
         setPeople(resPeople.data ?? []);
         setPeopleIds(ids ?? []);
       } catch {
@@ -75,7 +76,6 @@ export default function PracticeUpdate({
         if (mounted) setIsLoadingPeople(false);
       }
     })();
-
     return () => {
       mounted = false;
     };
@@ -102,15 +102,23 @@ export default function PracticeUpdate({
       toast.warning("Vui lòng nhập URL");
       return;
     }
+    if (external && !href.trim()) {
+      toast.warning("Vui lòng nhập đường dẫn ngoài (href)");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
 
       const payload: Partial<Practice> = {
         title: { en: title.en || "", vi: title.vi || "" },
-        content: { en: content.en || "", vi: content.vi || "" },
+        content: external
+          ? { en: "", vi: "" }
+          : { en: content.en || "", vi: content.vi || "" },
         url: slugify(url.trim()),
-        image: image || null,
+        image: external ? null : image || null,
+        external,
+        href: external ? href.trim() : null,
       };
 
       const updated = await updatePractice(practice.id as number, payload);
@@ -136,7 +144,6 @@ export default function PracticeUpdate({
     }
   };
 
-  // lock body scroll khi mở modal
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -180,21 +187,65 @@ export default function PracticeUpdate({
             />
           </div>
 
-          {/* URL & IMAGE */}
+          {/* URL */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="URL (unique)"
               value={url}
               onChange={(v) => setUrl(slugify(v))}
             />
+            <div />
+          </div>
+
+          {/* External toggle */}
+          <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div
+                onClick={() => setExternal((v) => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                  external ? "bg-blue-500" : "bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                    external ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </div>
+              <div className="flex items-center gap-2 text-white font-medium">
+                <ExternalLink className="w-4 h-4" />
+                Liên kết ngoài (External link)
+              </div>
+            </label>
+
+            {external && (
+              <Input
+                label="Đường dẫn ngoài (href)"
+                value={href}
+                onChange={setHref}
+                placeholder="https://..."
+              />
+            )}
+          </div>
+
+          {/* Image & People — disabled khi external */}
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${external ? "opacity-40 pointer-events-none select-none" : ""}`}
+          >
             <div>
               <label className="block mb-1 text-white">
                 Banner (1920 x 640)
+                {external && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    (không dùng khi external)
+                  </span>
+                )}
               </label>
               <button
                 type="button"
                 onClick={() => setShowImageBox(true)}
-                className="w-full px-4 py-2 bg-buttonRoot text-white rounded-lg hover:opacity-80"
+                disabled={external}
+                className="w-full px-4 py-2 bg-buttonRoot text-white rounded-lg hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {image ? "Thay đổi hình ảnh" : "Chọn hình ảnh"}
               </button>
@@ -216,57 +267,68 @@ export default function PracticeUpdate({
                 </div>
               )}
             </div>
-          </div>
 
-          {/* People */}
-          <div>
-            <label className="block mb-2 text-white font-medium">
-              Nhân sự tham gia (Our People)
-            </label>
-
-            <div className="max-h-[220px] overflow-auto rounded-lg border border-gray-600 bg-black p-3 space-y-2">
-              {isLoadingPeople ? (
-                <div className="text-gray-400 text-sm">Đang tải…</div>
-              ) : people.length === 0 ? (
-                <div className="text-gray-400 text-sm">Không có nhân sự</div>
-              ) : (
-                people.map((p) => {
-                  const pid = getPeopleId(p);
-                  if (pid === null) return null;
-
-                  const checked = peopleIds.includes(pid);
-                  const label =
-                    t(p.name as any) || (p.email ?? "").trim() || `#${pid}`;
-
-                  return (
-                    <label
-                      key={String((p as any).id)}
-                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 px-2 py-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => togglePeople(pid, e.target.checked)}
-                      />
-                      <span className="truncate">
-                        {label}
-                        <span className="text-gray-400">
-                          {t(p.position as any)
-                            ? ` — ${t(p.position as any)}`
-                            : ""}
+            {/* People */}
+            <div>
+              <label className="block mb-2 text-white font-medium">
+                Nhân sự tham gia (Our People)
+                {external && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    (không dùng khi external)
+                  </span>
+                )}
+              </label>
+              <div className="max-h-[220px] overflow-auto rounded-lg border border-gray-600 bg-black p-3 space-y-2">
+                {isLoadingPeople ? (
+                  <div className="text-gray-400 text-sm">Đang tải…</div>
+                ) : people.length === 0 ? (
+                  <div className="text-gray-400 text-sm">Không có nhân sự</div>
+                ) : (
+                  people.map((p) => {
+                    const pid = getPeopleId(p);
+                    if (pid === null) return null;
+                    const checked = peopleIds.includes(pid);
+                    const label =
+                      t(p.name as any) || (p.email ?? "").trim() || `#${pid}`;
+                    return (
+                      <label
+                        key={String((p as any).id)}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 px-2 py-1 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => togglePeople(pid, e.target.checked)}
+                        />
+                        <span className="truncate">
+                          {label}
+                          <span className="text-gray-400">
+                            {t(p.position as any)
+                              ? ` — ${t(p.position as any)}`
+                              : ""}
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                  );
-                })
-              )}
+                      </label>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Content — disabled khi external */}
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200 ${external ? "opacity-40 pointer-events-none select-none" : ""}`}
+          >
             <div>
-              <label className="block mb-1 text-white">Content (EN)</label>
+              <label className="block mb-1 text-white">
+                Content (EN)
+                {external && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    (không dùng khi external)
+                  </span>
+                )}
+              </label>
               <EditorQuote
                 initialContent={content.en || ""}
                 onContentChange={(v) => setContent((p) => ({ ...p, en: v }))}
@@ -274,7 +336,14 @@ export default function PracticeUpdate({
               />
             </div>
             <div>
-              <label className="block mb-1 text-white">Nội dung (VI)</label>
+              <label className="block mb-1 text-white">
+                Nội dung (VI)
+                {external && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    (không dùng khi external)
+                  </span>
+                )}
+              </label>
               <EditorQuote
                 initialContent={content.vi || ""}
                 onContentChange={(v) => setContent((p) => ({ ...p, vi: v }))}
@@ -318,23 +387,25 @@ export default function PracticeUpdate({
   );
 }
 
-/* Small UI helper */
 function Input({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (val: string) => void;
+  placeholder?: string;
 }) {
   return (
     <div>
       <label className="block mb-1 text-white">{label}</label>
       <input
-        className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600 placeholder-gray-400"
+        className="w-full px-4 py-2 rounded-lg bg-black text-white border border-gray-600 placeholder-gray-500"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
       />
     </div>
   );

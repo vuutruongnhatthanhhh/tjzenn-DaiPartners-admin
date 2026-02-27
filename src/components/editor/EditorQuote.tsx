@@ -20,7 +20,7 @@ import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import { Link } from "@tiptap/extension-link";
 import { Node, mergeAttributes } from "@tiptap/core";
-import { Quote } from "lucide-react";
+import { Quote, Link as Link2 } from "lucide-react";
 
 import ImageBox from "@/components/image/ImageBox";
 import QuoteCardView from "@/components/editor/QuoteCardView";
@@ -236,6 +236,19 @@ const EditorShort = ({
       .run();
   };
 
+  const handleAddLink = () => {
+    const url = prompt("Nhập URL:");
+    if (!url) return;
+    const text = prompt("Nhập văn bản hiển thị:");
+    if (!text) return;
+    editor
+      ?.chain()
+      .focus()
+      .extendMarkRange("link")
+      .insertContent(`<a href="${url}" target="_blank">${text}</a>`)
+      .run();
+  };
+
   return (
     <div className="rounded-lg overflow-auto h-[50vh] flex flex-col">
       <div className="bg-black p-2 shadow-md sticky top-0 z-10 flex space-x-4 items-center border-b border-gray-600">
@@ -335,6 +348,13 @@ const EditorShort = ({
         >
           <Quote className="w-4 h-4" />
           Quote
+        </button>
+        <button
+          type="button"
+          className="bg-white text-black px-2 py-1 rounded hover:bg-gray-200"
+          onClick={handleAddLink}
+        >
+          <Link2 />
         </button>
       </div>
 
